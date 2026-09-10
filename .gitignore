@@ -5,3 +5,5 @@ connector_runtime.log*
 connector.log*
 node_modules/
 .vercel/
+.env
+supabase/.env
