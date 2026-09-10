@@ -1,0 +1,7 @@
+*.bak-*
+conv_sessions.json
+daon_connector.lock
+connector_runtime.log*
+connector.log*
+node_modules/
+.vercel/

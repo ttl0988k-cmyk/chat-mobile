@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <title>다온 모바일 작업실</title>
+  <link rel="stylesheet" href="style.css?v=1788698416">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- 로그인 화면 -->
+    <section id="auth-view" class="view active">
+      <div class="auth-card">
+        <h1>다온 작업실</h1>
+        <p class="muted">라온에게 작업 지시용</p>
+        <input id="auth-email" type="email" placeholder="이메일" autocomplete="email">
+        <input id="auth-password" type="password" placeholder="비밀번호" autocomplete="current-password">
+        <div class="auth-actions">
+          <button id="auth-login" class="primary">로그인</button>
+          <button id="auth-signup" class="ghost">회원가입</button>
+        </div>
+        <p id="auth-msg" class="msg"></p>
+      </div>
+    </section>
+
+    <!-- 채팅 화면 -->
+    <section id="chat-view" class="view">
+      <header>
+        <div class="header-left">
+          <button id="conv-list-btn" class="ghost small" title="대화 목록">☰</button>
+          <div>
+            <strong>다온 작업실</strong>
+            <span id="user-email" class="muted"></span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <select id="model-select" class="model-select" title="모델 선택">
+            <option value="">기본 모델</option>
+          </select>
+          <button id="auto-btn" class="ghost small" title="자율 실행">🛡️</button>
+          <button id="interrupt-btn" class="ghost small" title="작업 중단">⏹️</button>
+          <button id="clear-btn" class="ghost small danger" title="채팅 삭제">🗑️</button>
+          <button id="logout-btn" class="ghost small">로그아웃</button>
+        </div>
+      </header>
+
+      <!-- 대화 목록 패널 -->
+      <div id="conv-list-panel" class="conv-list-panel" style="display:none;">
+        <div class="conv-list-header">
+          <span>대화 목록</span>
+          <button id="conv-new-btn" class="ghost small">+ 새 대화</button>
+          <button id="conv-close-btn" class="ghost small">✕</button>
+        </div>
+        <div id="conv-list" class="conv-list"></div>
+      </div>
+
+      <div id="messages" class="messages"></div>
+
+      <form id="send-form" class="composer">
+        <input id="file-input" type="file" hidden multiple>
+        <button id="attach-btn" class="ghost small" type="button" title="파일 첨부">📎</button>
+        <textarea id="send-input" placeholder="라온에게 보낼 작업 지시…" rows="2"></textarea>
+        <button id="send-btn" class="primary" type="submit">전송</button>
+      </form>
+    </section>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js?v=1788698416"></script>
+</body>
+</html>

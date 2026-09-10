@@ -1,0 +1,358 @@
+/* style.css — 다온 모바일 작업실 */
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #334155;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --user-bubble: #6366f1;
+  --assistant-bubble: #334155;
+  --border: #334155;
+  --radius: 14px;
+  --danger: #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.view {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.view.active { display: flex; }
+
+/* ── Auth view ── */
+#auth-view {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.auth-card h1 { font-size: 22px; }
+.auth-card .muted { color: var(--text-muted); margin-bottom: 8px; }
+
+input, textarea {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+}
+input:focus, textarea:focus { outline: 2px solid var(--primary); }
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+button.primary { background: var(--primary); color: white; }
+button.primary:hover { background: var(--primary-hover); }
+button.ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+button.ghost:hover { color: var(--text); }
+button.small { padding: 6px 12px; font-size: 13px; }
+button.danger { color: var(--danger); border-color: rgba(239,68,68,0.4); }
+button.danger:hover { color: #fca5a5; background: rgba(239,68,68,0.1); }
+
+.auth-actions { display: flex; gap: 8px; margin-top: 4px; }
+.auth-actions button { flex: 1; }
+.msg { color: #fca5a5; font-size: 13px; min-height: 18px; }
+
+/* ── Chat view ── */
+#chat-view {
+  min-height: 0;
+  overflow: hidden;
+}
+#chat-view header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+  gap: 8px;
+}
+#chat-view header .muted { font-size: 12px; margin-left: 8px; color: var(--text-muted); }
+.header-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.header-actions { display: flex; gap: 6px; align-items: center; }
+.header-actions button { white-space: nowrap; }
+
+.model-select {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 6px;
+  font-size: 12px;
+  max-width: 120px;
+  font-family: inherit;
+}
+
+/* ── 대화 목록 패널 ── */
+.conv-list-panel {
+  flex-shrink: 0;
+  max-height: 40%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+.conv-list-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+}
+.conv-list-header span { flex: 1; }
+.conv-list { padding: 4px; }
+.conv-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.conv-item:hover { background: var(--surface-2); }
+.conv-item.active { background: var(--primary); }
+.conv-item.active .conv-time { color: rgba(255,255,255,0.8); }
+.conv-title { font-size: 14px; font-weight: 500; word-break: break-all; }
+.conv-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.conv-empty { padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+.messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.msg-row {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+.msg-row.user { align-self: flex-end; }
+.bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--assistant-bubble);
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+.msg-row.user .bubble { background: var(--user-bubble); }
+.msg-row.tool .bubble {
+  background: #312e81;
+  border: 1px solid #6366f1;
+  font-size: 13px;
+  color: #c7d2fe;
+}
+.msg-row.system { align-self: center; max-width: 90%; }
+.msg-row.system .bubble {
+  background: transparent;
+  border: 1px dashed #475569;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 6px 10px;
+  text-align: center;
+  border-radius: 10px;
+}
+#auto-btn.auto-on { background: #f59e0b; color: #1c1917; border-color: #f59e0b; }
+.approval-btns { display: flex; gap: 8px; margin-top: 8px; }
+.approval-btns button { flex: 1; padding: 10px; font-size: 14px; }
+.approval-btns .approve { background: #22c55e; color: white; }
+.approval-btns .reject { background: #ef4444; color: white; }
+.approval-btns button:disabled { opacity: 0.5; cursor: default; }
+.meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  padding: 0 4px;
+}
+.msg-row.user .meta { text-align: right; }
+
+.composer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.composer textarea { flex: 1; min-height: 44px; max-height: 120px; }
+.composer button { align-self: flex-end; }
+.composer #attach-btn { padding: 10px 12px; align-self: flex-end; }
+#attach-preview {
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 2px;
+  display: none;
+}
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  max-width: 100%;
+  word-break: break-all;
+}
+.attach-chip .attach-rm {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 0 2px;
+  font-size: 12px;
+}
+.attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.attach-img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 10px;
+  cursor: pointer;
+  object-fit: cover;
+}
+.attach-file {
+  color: var(--primary-hover);
+  font-size: 13px;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+/* 삭제 확인 팝업 */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.confirm-box {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 300px;
+  width: 90%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.confirm-box .confirm-title { font-size: 16px; font-weight: 600; }
+.confirm-box .confirm-text { font-size: 13px; color: var(--text-muted); }
+.confirm-box .confirm-actions { display: flex; gap: 8px; }
+.confirm-box .confirm-actions button { flex: 1; }
+
+/* ── 접이식 도구 로그 (모바일 DOM/메모리 보호) ── */
+.tool-details {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  max-width: 92%;
+  overflow: hidden;
+  margin: 3px 0;
+}
+.tool-summary {
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  user-select: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tool-summary:hover {
+  color: var(--text);
+}
+.tool-content {
+  padding: 8px 12px;
+  margin: 0;
+  background: rgba(15, 23, 42, 0.6);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-family: Consolas, monospace, sans-serif;
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+/* [v3] 링크 + 상태 배지 (2026-09-04) */
+.bubble a { color: #a5b4fc; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+.bubble a:active { opacity: 0.7; }
+.status-badge { display: inline-block; font-size: 12px; color: var(--text-muted); background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 999px; padding: 5px 12px; animation: statusPulse 1.6s ease-in-out infinite; }
+@keyframes statusPulse { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
+
+
+/* 작업 중단 버튼 (스트리밍 / 작업 중 상태) */
+button.stop-btn {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4) !important;
+}
+button.stop-btn:hover, button.stop-btn:active {
+  background: #dc2626 !important;
+}

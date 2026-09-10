@@ -1,0 +1,124 @@
+[2026-08-30 14:47:42,928] INFO 🔒 단일 인스턴스 락 획득 (pid=8716)
+[2026-08-30 14:47:42,928] INFO 🚀 DAON Remote Connector (async) 시작
+[2026-08-30 14:47:42,928] INFO Supabase URL: https://gfpsahhfllozfqczyoza.supabase.co
+[2026-08-30 14:47:42,928] INFO DAON URL: http://127.0.0.1:9090
+[2026-08-30 14:47:42,928] INFO DAON 서버: 200 ({"status": "ok", "healthy": true, "warnings": [], )
+[2026-08-30 14:47:42,928] INFO Realtime WS 연결: wss://gfpsahhfllozfqczyoza.supabase.co/realtime/v1/websocket?apikey=sb_secret_ac...
+[2026-08-30 14:47:43,603] INFO ✅ Realtime WS 연결됨
+[2026-08-30 14:47:43,685] INFO Realtime 서버 응답: {'status': 'ok', 'response': {'postgres_changes': [{'id': 43783255, 'event': 'INSERT', 'schema': 'pu
+[2026-08-30 14:48:08,964] INFO 📩 모바일 메시지 type=approval_response: [E2E-TEST 7eef05] 승인응답
+[2026-08-30 14:48:08,964] INFO 📩 모바일 메시지 type=interrupt: [E2E-TEST 7eef05] 인터럽트
+[2026-08-30 14:48:08,980] INFO DAON 취소: 200 ({
+  "ok": true,
+  "cancelled": false,
+  "stream_id": "e2e-stream-7eef05"
+})
+[2026-08-30 14:48:08,980] INFO DAON 승인 응답 approve: 400 ({
+  "ok": false,
+  "error": "No pending approval for this session"
+})
+[2026-08-30 14:48:56,094] INFO 📩 모바일 메시지 type=chat: 뭐해? 또 가만히있네?
+[2026-08-30 14:48:56,238] INFO DAON 세션(dada191a): 387df33a991e
+[2026-08-30 14:48:56,253] INFO DAON 스트림: 040a537d0a764561b5af8137ab1fc601
+[2026-08-30 14:51:02,265] INFO ✅ DAON 완료
+[2026-08-30 14:54:45,848] INFO 📩 모바일 메시지 type=chat: 지금 세션이 엉켜서 난리네. . 전세션 . . 이세션. . 내용이 엉망으로 엉켰네. 
+자 지금 . . 내가 너보고 하라그런거 뭐뭐 있었지?  하
+[2026-08-30 14:54:45,865] INFO DAON 스트림: 768480e960f847819de7aeab168863df
+[2026-08-30 14:58:57,029] INFO ✅ DAON 완료
+[2026-08-30 14:59:25,921] INFO 📩 모바일 메시지 type=chat: 작업 중단과 자율 실행도 추가가능한가?
+[2026-08-30 14:59:25,943] INFO DAON 스트림: 7094ae7c8ac141f7ade6a0800c4d45e7
+[2026-08-30 15:03:33,601] INFO 🔐 승인 요청 전달됨 (session=387df33a991e)
+[2026-08-30 15:04:55,951] INFO 📩 모바일 메시지 type=approval_response: ✅ 승인함
+[2026-08-30 15:04:55,960] INFO DAON 승인 응답 approve: 400 ({
+  "ok": false,
+  "error": "No pending approval for this session"
+})
+[2026-08-30 15:05:56,252] INFO 📩 모바일 메시지 type=chat: 승인 눌렀는데 승인함. . 안뜨네. . 그리고 너 지금 작업 중지상태고. . 일단 승인 할게 작업 계속해. . 승인버튼도 들여다 봐 다시
+[2026-08-30 15:05:56,269] INFO DAON 스트림: f2438e0e343445bcac4e4dfdff670414
+[2026-08-30 15:35:11,037] INFO 🔒 단일 인스턴스 락 획득 (pid=21016)
+[2026-08-30 15:35:11,037] INFO 🚀 DAON Remote Connector (async) 시작
+[2026-08-30 15:35:11,037] INFO Supabase URL: https://gfpsahhfllozfqczyoza.supabase.co
+[2026-08-30 15:35:11,037] INFO DAON URL: http://127.0.0.1:9090
+[2026-08-30 15:35:11,051] INFO DAON 서버: 200 ({"status": "ok", "healthy": true, "warnings": [], )
+[2026-08-30 15:35:11,051] INFO Realtime WS 연결: wss://gfpsahhfllozfqczyoza.supabase.co/realtime/v1/websocket?apikey=sb_secret_ac...
+[2026-08-30 15:35:11,455] INFO ✅ Realtime WS 연결됨
+[2026-08-30 15:35:11,533] INFO Realtime 서버 응답: {'status': 'ok', 'response': {'postgres_changes': [{'id': 43783255, 'event': 'INSERT', 'schema': 'pu
+[2026-08-30 15:36:55,046] INFO 📩 모바일 메시지 type=chat: 커넥터 재 시작 했니?
+[2026-08-30 15:36:55,205] INFO DAON 세션(dada191a): 6f5c6f17734c
+[2026-08-30 15:36:55,205] INFO DAON 스트림: 97a303f1014443799db347225a691f35
+[2026-08-30 15:39:01,181] INFO ✅ DAON 완료
+[2026-08-30 15:41:16,270] INFO 📩 모바일 메시지 type=chat: 자. . 승인버튼만 뜨면 작업이 중단 되는 것도 수정 한거지?  그럼???
+[2026-08-30 15:41:16,286] INFO DAON 스트림: 36424bf812b6486c878ca07fe00d700f
+[2026-08-30 15:43:10,707] INFO ✅ DAON 완료
+[2026-08-30 15:46:00,410] INFO 📩 모바일 메시지 type=chat: 알았어. .그럼 이 문제는 해결 된었다고 보고. . 
+아까. . 카글에서 동영상 주피터 노트북 으로 실행해서 버셀 앱에서 실행 하고 결과 받을 
+[2026-08-30 15:46:00,426] INFO DAON 스트림: f16053be73d9404c8a6ce8afa691eece
+[2026-08-30 15:47:27,789] INFO DAON 승인 응답 approve: 200 ({
+  "ok": true,
+  "choice": "once"
+})
+[2026-08-30 15:47:27,893] INFO 🤖 자율 실행 자동승인 (session=6f5c6f17734c, ok=True)
+[2026-08-30 15:49:14,545] INFO DAON 승인 응답 approve: 200 ({
+  "ok": true,
+  "choice": "once"
+})
+[2026-08-30 15:49:14,643] INFO 🤖 자율 실행 자동승인 (session=6f5c6f17734c, ok=True)
+[2026-08-30 15:51:13,162] INFO 📩 모바일 메시지 type=chat: 베셀앱에. . 영상제작 가능한 페이지를 만들고. . 다온 프로덕션으로 카글에서 주소를 베셀 주소로 넣어서 베셀 앱에서 작업 가능하게 만들어.이렇
+[2026-08-30 15:51:13,178] INFO DAON 스트림: 399972763b0942b385752847df760da2
+[2026-08-30 16:17:49,329] INFO 📩 모바일 메시지 type=chat: 뭐지?노트북 버그 수정한다면서?
+[2026-08-30 16:17:49,345] INFO DAON 스트림: 9de4085c38b844269d6567794733074c
+[2026-08-30 16:18:44,521] INFO 📩 모바일 메시지 type=chat: 라온?
+[2026-08-30 16:18:44,553] INFO DAON 스트림: 3a642fdf3e814686bc7bbe91d7e39248
+[2026-08-30 16:28:53,704] INFO ✅ DAON 완료
+[2026-08-30 16:33:07,045] INFO 📩 모바일 메시지 type=chat: 라온아 영상 생성. . 좀 빠른 모델 없었어?5초나 6초짜리 하나 생성에 12분은 좀 넘. 긴거같은데?
+[2026-08-30 16:33:07,071] INFO DAON 스트림: 43c27bd1c7844444b36b5e350417ccfd
+[2026-08-30 16:43:04,423] INFO ✅ DAON 완료
+[2026-08-30 16:44:05,534] INFO 📩 모바일 메시지 type=chat: 아니야 걍 기다려보자 영상 생성 되는지
+[2026-08-30 16:44:05,550] INFO DAON 스트림: 6eca8a347f794337ab4ad5afaf6aecc1
+[2026-08-30 16:44:44,555] INFO ✅ DAON 완료
+[2026-08-30 16:55:23,116] INFO 📩 모바일 메시지 type=chat: 영상 만들어졌냐?
+[2026-08-30 16:55:23,133] INFO DAON 스트림: 1c45fd03eaad4c749bd0c5bf9aab0015
+[2026-08-30 17:01:13,223] INFO DAON 승인 응답 approve: 200 ({
+  "ok": true,
+  "choice": "once"
+})
+[2026-08-30 17:01:13,321] INFO 🤖 자율 실행 자동승인 (session=6f5c6f17734c, ok=True)
+[2026-08-30 17:04:46,457] INFO ✅ DAON 완료
+[2026-08-30 17:33:50,549] INFO 📩 모바일 메시지 type=chat: 만들어졌니?
+[2026-08-30 17:33:50,576] INFO DAON 스트림: ddcb4c06af924d69831ab00d65cb980a
+[2026-08-30 17:38:05,552] INFO ✅ DAON 완료
+[2026-08-30 17:50:23,010] INFO 📩 모바일 메시지 type=chat: 야..라온. . 이리나와봐. . 딴거 하지말고. . 할말있어
+[2026-08-30 17:50:23,027] INFO DAON 스트림: 1181d529aed442bf80bf046c8235aa19
+[2026-08-30 17:50:38,845] INFO ✅ DAON 완료
+[2026-08-30 17:52:35,701] INFO 📩 모바일 메시지 type=chat: 야. . 내가 방금. . 카글들어가봤는데. . 너 세팅에서 gpu도 안바꿔 놓고. . 그냥 있었더만. . 그래서 내가 방금. T4로 바꾸고 런해
+[2026-08-30 17:52:35,717] INFO DAON 스트림: b96f445018f740388f170e028c9d2185
+[2026-08-30 17:54:40,431] INFO 📩 모바일 메시지 type=chat: 잠시만... 에러뜬건없는데. .
+[2026-08-30 17:54:40,458] INFO DAON 스트림: 3ac9bc62553842ca9dac9a14c0026686
+[2026-08-30 17:56:15,577] INFO 📩 모바일 메시지 type=chat: 야.라온.
+[2026-08-30 17:56:15,609] INFO DAON 스트림: af54bb18a1474a7783b3c4445935f38d
+[2026-08-30 17:56:36,912] INFO 📩 모바일 메시지 type=chat: 내가 지금 베셀앱에서 돌려보고있어. .
+[2026-08-30 17:56:36,961] INFO DAON 스트림: efc72bc99262417689b1ec063d6b01cb
+[2026-08-30 17:56:58,215] INFO 📩 모바일 메시지 type=chat: 결과나오는지 좀 있다가보자
+[2026-08-30 17:56:58,247] INFO DAON 스트림: 00bcd7a41e5a4829b08504583c25f732
+[2026-08-30 17:57:47,059] INFO ✅ DAON 완료
+[2026-08-30 18:02:41,854] INFO 📩 모바일 메시지 type=chat: 생성실패 났고 커널실행 에러 났단다. . 6분정도 돌았고. . 원인 파악해봐
+[2026-08-30 18:02:41,885] INFO DAON 스트림: d546586f183e42ef900da843347e28af
+[2026-08-30 18:13:19,600] INFO ✅ DAON 완료
+[2026-08-30 18:14:01,744] INFO 📩 모바일 메시지 type=chat: 일단 오늘은 여기까지
+[2026-08-30 18:14:01,776] INFO DAON 스트림: 9fce00386dfe48fe88df3eee9ed729b7
+[2026-08-30 18:15:50,169] INFO ✅ DAON 완료
+[2026-08-30 18:18:34,804] INFO 📩 모바일 메시지 type=chat: 아..그리고..하나만 더..
+[2026-08-30 18:18:34,836] INFO DAON 스트림: 49ff3eceaa054be0a1f675883259fd0f
+[2026-08-30 18:18:47,951] INFO ✅ DAON 완료
+[2026-08-30 18:19:13,491] INFO 📩 모바일 메시지 type=chat: 모델 선탁창에..qwen모델들 왜 안넣어놨어?
+[2026-08-30 18:19:13,524] INFO DAON 스트림: 70a6278d430b4c938c0c0b89a53aef37
+[2026-08-30 18:23:07,410] INFO ✅ DAON 완료
+[2026-08-30 19:16:41,631] INFO 📩 모바일 메시지 type=chat: 안녕?  프로바이더 모델명은?
+[2026-08-30 19:16:41,807] INFO DAON 세션(700f0fe3): 7c050e401089
+[2026-08-30 19:16:41,822] INFO DAON 스트림: 0a75f1cf4943492b89439b2abd2a4d35
+[2026-08-30 19:17:48,805] INFO DAON 승인 응답 approve: 200 ({
+  "ok": true,
+  "choice": "once"
+})
+[2026-08-30 19:17:48,884] INFO 🤖 자율 실행 자동승인 (session=7c050e401089, ok=True)
+[2026-08-30 19:18:05,405] INFO ✅ DAON 완료

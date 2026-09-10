@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Wan2.2 · 다온 영상 생성기</title>
+
+  <style>
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+
+      color: #f5f5f7;
+
+      min-height: 100vh;
+
+      padding: 40px 20px;
+
+    }
+
+    .container {
+
+      max-width: 720px;
+
+      margin: 0 auto;
+
+    }
+
+    h1 {
+
+      font-size: 36px;
+
+      font-weight: 700;
+
+      letter-spacing: -0.02em;
+
+      margin-bottom: 8px;
+
+    }
+
+    .subtitle {
+
+      color: #8e8ea0;
+
+      font-size: 15px;
+
+      margin-bottom: 32px;
+
+    }
+
+    .badge {
+
+      display: inline-block;
+
+      padding: 4px 10px;
+
+      border-radius: 6px;
+
+      background: rgba(99, 102, 241, 0.2);
+
+      color: #818cf8;
+
+      font-size: 12px;
+
+      margin-left: 8px;
+
+      font-weight: 600;
+
+    }
+
+    .card {
+
+      background: rgba(20, 17, 38, 0.7);
+
+      border: 1px solid rgba(255, 255, 255, 0.1);
+
+      border-radius: 14px;
+
+      padding: 28px;
+
+      backdrop-filter: blur(8px);
+
+      margin-bottom: 24px;
+
+    }
+
+    label {
+
+      display: block;
+
+      font-size: 13px;
+
+      font-weight: 600;
+
+      color: #c0c0d0;
+
+      margin-bottom: 8px;
+
+    }
+
+    textarea {
+
+      width: 100%;
+
+      min-height: 100px;
+
+      padding: 14px;
+
+      border-radius: 10px;
+
+      border: 1px solid rgba(255, 255, 255, 0.1);
+
+      background: rgba(15, 12, 41, 0.6);
+
+      color: #f5f5f7;
+
+      font-size: 15px;
+
+      resize: vertical;
+
+      font-family: inherit;
+
+      line-height: 1.5;
+
+    }
+
+    textarea:focus {
+
+      outline: none;
+
+      border-color: #6366f1;
+
+    }
+
+    .examples {
+
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 8px;
+
+      margin-top: 12px;
+
+    }
+
+    .example {
+
+      padding: 6px 12px;
+
+      border: 1px solid rgba(99, 102, 241, 0.3);
+
+      border-radius: 16px;
+
+      background: rgba(99, 102, 241, 0.1);
+
+      color: #c7d2fe;
+
+      font-size: 12px;
+
+      cursor: pointer;
+
+      transition: all 0.2s;
+
+    }
+
+    .example:hover {
+
+      background: rgba(99, 102, 241, 0.25);
+
+    }
+
+    button.generate {
+
+      width: 100%;
+
+      padding: 16px;
+
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+
+      color: white;
+
+      border: none;
+
+      border-radius: 10px;
+
+      font-size: 16px;
+
+      font-weight: 600;
+
+      cursor: pointer;
+
+      margin-top: 16px;
+
+      transition: transform 0.1s, box-shadow 0.2s;
+
+    }
+
+    button.generate:hover:not(:disabled) {
+
+      transform: translateY(-1px);
+
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+
+    }
+
+    button.generate:disabled {
+
+      opacity: 0.5;
+
+      cursor: not-allowed;
+
+    }
+
+    .status {
+
+      margin-top: 24px;
+
+      padding: 16px;
+
+      border-radius: 10px;
+
+      background: rgba(99, 102, 241, 0.1);
+
+      border: 1px solid rgba(99, 102, 241, 0.3);
+
+      color: #c7d2fe;
+
+      font-size: 14px;
+
+    }
+
+    .status.error {
+
+      background: rgba(239, 68, 68, 0.1);
+
+      border-color: rgba(239, 68, 68, 0.3);
+
+      color: #fca5a5;
+
+    }
+
+    .status.success {
+
+      background: rgba(34, 197, 94, 0.1);
+
+      border-color: rgba(34, 197, 94, 0.3);
+
+      color: #86efac;
+
+    }
+
+    video {
+
+      width: 100%;
+
+      border-radius: 10px;
+
+      margin-top: 12px;
+
+      background: black;
+
+    }
+
+    .meta {
+
+      font-size: 12px;
+
+      color: #8e8ea0;
+
+      margin-top: 8px;
+
+    }
+
+    .hint {
+
+      padding: 12px;
+
+      background: rgba(255, 255, 255, 0.05);
+
+      border-left: 3px solid #6366f1;
+
+      border-radius: 6px;
+
+      font-size: 13px;
+
+      color: #b0b0c0;
+
+      margin-bottom: 16px;
+
+    }
+
+    .loader {
+
+      display: inline-block;
+
+      width: 14px;
+
+      height: 14px;
+
+      border: 2px solid rgba(255,255,255,0.3);
+
+      border-top-color: white;
+
+      border-radius: 50%;
+
+      animation: spin 0.8s linear infinite;
+
+      margin-right: 8px;
+
+      vertical-align: middle;
+
+    }
+
+    @keyframes spin {
+
+      to { transform: rotate(360deg); }
+
+    }
+
+    a { color: #818cf8; text-decoration: none; }
+
+    a:hover { text-decoration: underline; }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h1>🎬 Wan2.2 영상 생성기 <span class="badge">17s · T4</span></h1>
+
+    <p class="subtitle">알리바바 Wan2.2-TI2V-5B Q4 GGUF · 카글 T4 GPU에서 실행</p>
+
+
+
+    <div class="hint">
+
+      💡 <strong>사용법</strong>: 프롬프트를 입력하고 "생성" 클릭.<br>
+
+      - 생성 시간: 약 12~16분 (모델 로드 2분 + 생성 10~14분)<br>
+
+      - 카글 무료 한도: 주당 30시간 GPU<br>
+
+      - 결과 mp4는 생성 후 다온 챗창에도 자동으로 전송됩니다
+
+    </div>
+
+
+
+    <div class="card">
+
+      <label for="prompt">프롬프트 (영어 권장)</label>
+
+      <textarea id="prompt" placeholder="A cat astronaut floating through space, neon nebula in background, cinematic slow motion, high quality, detailed fur..."></textarea>
+
+      <label for="duration" style="margin-top:12px">길이 모드</label>
+      <select id="duration" style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#1a1a2e;color:#e0e0e0;font-size:14px">
+        <option value="short">⚡ 빠른 모드 — 5초 (약 8분)</option>
+        <option value="long">🎬 일반 모드 — 8초 2장면 연결 (약 14분)</option>
+      </select>
+
+
+
+      <div class="examples">
+
+        <span class="example" data-prompt="A cinematic close-up of a hummingbird drinking from a red flower, soft bokeh, golden hour sunlight, 8k detail">🐦 hummingbird</span>
+
+        <span class="example" data-prompt="Aerial drone shot of a misty mountain valley at sunrise, fog rolling between peaks, cinematic color grading, slow pan">🏔️ mountain valley</span>
+
+        <span class="example" data-prompt="Close-up of coffee being poured into a glass cup, slow motion, steam rising, warm golden lighting, macro photography">☕ coffee pour</span>
+
+        <span class="example" data-prompt="A futuristic cyberpunk street at night in Tokyo, neon signs, rain reflections on wet asphalt, person walking with umbrella">🌃 tokyo cyberpunk</span>
+
+      </div>
+
+
+
+      <button class="generate" id="generateBtn" onclick="submitJob()">🚀 영상 생성 시작</button>
+
+
+
+      <div id="status"></div>
+
+    </div>
+
+
+
+<div class="card">
+      <h2 style="font-size:18px;margin-bottom:12px;">📥 카글 노트북 다운로드</h2>
+      <p style="color:#c0c0d0;font-size:14px;margin-bottom:12px;">
+        아래 버튼으로 노트북을 다운로드한 뒤, 카글에 업로드해서 실행하세요.
+      </p>
+      <a href="/api/wan22/notebook" download class="generate" style="display:inline-block;text-decoration:none;text-align:center;margin-bottom:8px;">
+        ⬇️ Notebook (.ipynb) 다운로드
+      </a>
+      <a href="/api/wan22/metadata" download class="generate" style="display:inline-block;text-decoration:none;text-align:center;background:linear-gradient(135deg,#10b981,#059669);">
+        ⬇️ kernel-metadata.json 다운로드
+      </a>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:18px;margin-bottom:12px;">🚀 카글 실행 가이드</h2>
+      <ol style="color:#c0c0d0;font-size:14px;line-height:1.8;padding-left:24px;">
+        <li><a href="https://www.kaggle.com/code/new" target="_blank">kaggle.com/code/new</a> 접속 후 새 노트북 생성</li>
+        <li>우측 패널: <strong>Accelerator → GPU T4 × 1</strong>, <strong>Internet → ON</strong></li>
+        <li>다운로드한 <code>kaggle_wan22_t2v_param.ipynb</code> 업로드 (File → Import)</li>
+        <li><strong>Add Data → "WAN22_DAON_PROMPTS" 검색 → Add</strong> 또는<br>
+            <code style="display:inline-block;background:#1a1535;padding:2px 6px;border-radius:4px;">WAN22_PROMPT=원하시는 프롬프트</code> 환경변수 설정</li>
+        <li><strong>Run All</strong> 클릭 (≈14분 소요)</li>
+        <li>완료 시 Output 패널에 <code>final_15s.mp4</code> 생성됨</li>
+        <li>아래 "결과 업로드" 영역에서 mp4 업로드 → Supabase Storage 저장 → 다운로드 링크</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:18px;margin-bottom:12px;">📤 결과 업로드</h2>
+      <p style="color:#c0c0d0;font-size:14px;margin-bottom:12px;">
+        카글에서 다운로드한 mp4를 업로드하면 라온 시스템이 Supabase Storage에 저장합니다.
+      </p>
+      <input type="file" id="videoFile" accept="video/mp4" style="display:block;margin-bottom:12px;color:#f5f5f7;">
+      <button class="generate" id="uploadBtn" onclick="uploadResult()">📤 Supabase Storage에 업로드</button>
+      <div id="uploadStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:18px;margin-bottom:12px;">📺 미리보기</h2>
+      <div id="preview" style="min-height: 80px; display: flex; align-items: center; justify-content: center; color: #8e8ea0;">
+        업로드한 영상이 여기에 표시됩니다
+      </div>
+    </div>
+
+
+    <p class="meta" style="text-align:center;margin-top:24px;">
+
+      모델: <a href="https://github.com/szchengmi/kaggle-wan22-t2v" target="_blank">szchengmi/kaggle-wan22-t2v</a> ·
+
+      다온 시스템 v1 · Vercel 배포
+
+    </p>
+
+  </div>
+
+
+
+  <script>
+
+    // 예시 클릭 시 textarea 채우기
+
+    document.querySelectorAll('.example').forEach(el => {
+
+      el.addEventListener('click', () => {
+
+        document.getElementById('prompt').value = el.dataset.prompt;
+
+      });
+
+    });
+
+
+
+    async function submitJob() {
+
+      const prompt = document.getElementById('prompt').value.trim();
+
+      if (!prompt || prompt.length < 5) {
+
+        showStatus('프롬프트를 5자 이상 입력하세요', 'error');
+
+        return;
+
+      }
+
+
+
+      const btn = document.getElementById('generateBtn');
+
+      btn.disabled = true;
+
+      btn.innerHTML = '<span class="loader"></span> 카글에 작업 등록 중...';
+
+      showStatus('카글 GPU에 작업 등록 중...', 'info');
+
+
+
+      try {
+
+        const res = await fetch('/api/wan22/submit', {
+
+          method: 'POST',
+
+          headers: { 'Content-Type': 'application/json' },
+
+          body: JSON.stringify({ prompt, duration: document.getElementById('duration').value }),
+
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+
+          showStatus(data.error || data.hint || '요청 실패: ' + res.status, 'error');
+
+          btn.disabled = false;
+
+          btn.innerHTML = '🚀 영상 생성 시작';
+
+          return;
+
+        }
+
+        showStatus(`✅ 작업 시작됨 (jobId: <code>${data.jobId}</code>)<br>${data.next}`, 'info');
+
+        pollStatus(data.jobId, data.pollUrl);
+
+      } catch (e) {
+
+        showStatus('네트워크 에러: ' + e.message, 'error');
+
+        btn.disabled = false;
+
+        btn.innerHTML = '🚀 영상 생성 시작';
+
+      }
+
+    }
+
+
+
+    function pollStatus(jobId, pollUrl) {
+      const t0 = Date.now();
+      showStatus('⏳ 카글 GPU 실행 중... <span id="elapsed"></span><br>약 12~16분 소요됩니다. 이 페이지를 닫지 마세요.', 'info');
+      const interval = setInterval(async () => {
+        const el = document.getElementById('elapsed');
+        if (el) el.textContent = '(경과 ' + Math.round((Date.now() - t0) / 60000) + '분)';
+        try {
+          const r = await fetch(pollUrl);
+          const j = await r.json();
+          if (j.status === 'complete' && j.videoUrl) {
+            clearInterval(interval);
+            showStatus('✅ 영상 생성 완료!' + (j.sizeMB ? ' (' + j.sizeMB + 'MB)' : ''), 'success');
+            let wrap = document.getElementById('videoWrap');
+            if (!wrap) {
+              wrap = document.createElement('div');
+              wrap.id = 'videoWrap';
+              document.getElementById('status').after(wrap);
+            }
+            wrap.innerHTML = '<video src="' + j.videoUrl + '" controls autoplay loop playsinline style="width:100%;max-width:848px;border-radius:12px;margin-top:16px"></video>';
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.innerHTML = '🚀 새 영상 생성';
+          } else if (j.status === 'error') {
+            clearInterval(interval);
+            showStatus('❌ 생성 실패: ' + (j.message || '알 수 없는 오류'), 'error');
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.innerHTML = '🚀 영상 생성 시작';
+          } else if (j.status === 'finalizing') {
+            showStatus('📦 영상 전송/저장 중... (거의 다 됐어요)', 'info');
+          }
+        } catch (e) {}
+      }, 20000);
+
+      setTimeout(() => {
+        clearInterval(interval);
+        const btn = document.getElementById('generateBtn');
+        btn.disabled = false;
+        btn.innerHTML = '🚀 새 영상 생성';
+      }, 25 * 60 * 1000); // 25분 후 자동 해제
+    }
+
+
+    function showStatus(msg, type = 'info') {
+
+      const el = document.getElementById('status');
+
+      el.className = 'status ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : '');
+
+      el.innerHTML = msg;
+
+    }
+
+  </script>
+
+</body>
+
+</html>
+

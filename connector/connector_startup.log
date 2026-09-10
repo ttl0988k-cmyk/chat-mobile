@@ -1,0 +1,44 @@
+[2026-09-05 20:00:10] INFO 매핑 복원: 대화-세션 6건
+[2026-09-05 20:00:10] INFO 🔒 단일 인스턴스 락 획득 (pid=11368)
+[2026-09-05 20:00:10] INFO 🚀 DAON Remote Connector (v3 — PATCH 스트리밍 + 상태 배지) 시작
+[2026-09-05 20:00:10] INFO Supabase URL: https://gfpsahhfllozfqczyoza.supabase.co
+[2026-09-05 20:00:10] INFO DAON URL: http://127.0.0.1:9090
+[2026-09-05 20:00:10] INFO Realtime WS 연결 시도: wss://gfpsahhfllozfqczyoza.supabase.co/realtime/v1/websocket?apikey=sb_secret_ac...
+[2026-09-05 20:00:10] INFO ✅ Supabase Realtime WS 연결 성공[2026-09-05 20:10:14] INFO 📩 모바일 메시지 type=chat conv=bc5b1a89 session=57418a85: 엥?
+[[2026-09-05 20:10:14] ERROR DAON start 실패 404: {
+  "error": "Session not found"
+}
+[2026-09-05 20:10:14] INFO 기존 세션 만료 또는 DAON 재시작 감지 — 새 세션 자동 생성 후 재시도[[2026-09-05 20:10:29] INFO 📨 SSE event=heartbeat keys=[][2026-09-05 20:10:39] INFO ✅ 메시지 INSERT (conv=bc5b1a89…, stream=5bceaf05…, msg_id=1fe2c670-9de4-4a7e-9cfd-fa3e26c225d7)
+[2026-09-05 20:10:39] INFO 📨 SSE event=tool keys=['name', 'event', 'preview', 'args']
+[2026-09-05 20:10:39] INFO 🔧 [tool _thinking reasoning.available] 
+[2026-09-05 20:10:39] INFO 📨 SSE event=model_info keys=['requested', 'actual']
+[2026-09-05 20:10:39] INFO 📨 SSE event=model_fallback keys=['requested', 'actual', 'message']
+[2026-09-05 20:10:39] INFO SSE 종료 이벤트(done) 수신
+[[2026-09-05 21:17:00] INFO 📩 모바일 메시지 type=autonomous_toggle conv=bc5b1a89 session=84746648: 🤖 자율 실행 켬[[2026-09-05 21:17:45] INFO 📩 모바일 메시지 type=autonomous_toggle conv=26abf2af session=NEW: 🛡️ 자율 실행 끔[[2026-09-05 21:17:47] INFO 📩 모바일 메시지 type=autonomous_toggle conv=26abf2af session=NEW: 🤖 자율 실행 켬[[2026-09-05 21:22:12] INFO 📩 모바일 메시지 type=chat conv=26abf2af session=NEW: 라온?[[2026-09-05 21:22:27] INFO 📨 SSE event=heartbeat keys=[][2026-09-05 21:22:32] INFO ✅ 메시지 INSERT (conv=26abf2af…, stream=5f5eddca…, msg_id=30254054-ccc3-4350-8680-74a71dd9a7b9)
+[2026-09-05 21:22:32] INFO 📨 SSE event=tool keys=['name', 'event', 'preview', 'args']
+[2026-09-05 21:22:32] INFO 🔧 [tool _thinking reasoning.available] 
+[2026-09-05 21:22:33] INFO 📨 SSE event=model_info keys=['requested', 'actual']
+[2026-09-05 21:22:33] INFO 📨 SSE event=model_fallback keys=['requested', 'actual', 'message']
+[[2026-09-05 21:22:33] INFO SSE 종료 이벤트(done) 수신[2026-09-05 21:23:35] INFO 📩 모바일 메시지 type=chat conv=26abf2af session=799a24ea: 얼래?
+[2026-09-05 21:23:51] INFO 📨 SSE event=heartbeat keys=[]
+[2026-09-05 21:23:52] INFO ✅ 메시지 INSERT (conv=26abf2af…, stream=b195c940…, msg_id=d1cf6803-8b2b-4b49-9973-a0ac7896c67a)
+[2026-09-05 21:23:52] INFO 📨 SSE event=tool keys=['name', 'event', 'preview', 'args']
+[2026-09-05 21:23:52] INFO 🔧 [tool _thinking reasoning.available] 
+[2026-09-05 21:23:52] INFO 📨 SSE event=model_info keys=['requested', 'actual']
+[2026-09-05 21:23:52] INFO 📨 SSE event=model_fallback keys=['requested', 'actual', 'message']
+[2026-09-05 21:23:52] INFO SSE 종료 이벤트(done) 수신
+
+NFO ✅ 메시지 INSERT (conv=26abf2af…, stream=697d8d23…, msg_id=4ffaadd8-8afa-4bb3-83f8-90d6710dc97b)
+[2026-09-05 21:22:32] INFO 📨 SSE event=tool keys=['name', 'event', 'preview', 'args']
+[2026-09-05 21:22:32] INFO 🔧 [tool _thinking reasoning.available] 
+[2026-09-05 21:22:33] INFO 📨 SSE event=model_info keys=['requested', 'actual']
+[2026-09-05 21:22:33] INFO 📨 SSE event=model_fallback keys=['requested', 'actual', 'message']
+[2026-09-05 21:22:33] INFO SSE 종료 이벤트(done) 수신
+[2026-09-05 21:23:35] INFO 📩 모바일 메시지 type=chat conv=26abf2af session=f2fc3b20: 얼래?
+[2026-09-05 21:23:50] INFO 📨 SSE event=heartbeat keys=[]
+[2026-09-05 21:23:54] INFO ✅ 메시지 INSERT (conv=26abf2af…, stream=80532a19…, msg_id=4e6e09af-d7c3-4420-b83a-d732a5bbb29c)
+[2026-09-05 21:23:54] INFO 📨 SSE event=tool keys=['name', 'event', 'preview', 'args']
+[2026-09-05 21:23:54] INFO 🔧 [tool _thinking reasoning.available] 
+[2026-09-05 21:23:54] INFO 📨 SSE event=model_info keys=['requested', 'actual']
+[2026-09-05 21:23:54] INFO 📨 SSE event=model_fallback keys=['requested', 'actual', 'message']
+[2026-09-05 21:23:54] INFO SSE 종료 이벤트(done) 수신

@@ -1,0 +1,13 @@
+# Vercel 배포에서 제외할 파일/폴더
+.env
+.env.*
+connector/
+supabase/
+_tmp_*/
+daon-intro/
+images/
+*.md
+*.json
+!package.json
+별자리_*.md
+스크린샷*.png

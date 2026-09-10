@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>다온 (DAON) — AI 에이전트 시스템 소개</title>
+  <meta name="description" content="다온은 AI 프로젝트 매니저 + 개발팀 + 비서가 한 앱에 들어 있는 데스크톱 에이전트 시스템입니다." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='18' fill='white' font-family='sans-serif' font-weight='bold'>다</text></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { 50:'#eef2ff',100:'#e0e7ff',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3' },
+            accent: { cyan:'#06b6d4', pink:'#ec4899' },
+            dark: { 900:'#0f172a', 800:'#1e293b', 700:'#334155' }
+          },
+          fontFamily: { sans: ['Inter','Pretendard','system-ui','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes fadeInUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeInLeft { from { opacity:0; transform:translateX(-30px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 20px rgba(99,102,241,0.3);} 50%{box-shadow:0 0 40px rgba(139,92,246,0.6);} }
+    @keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+
+    .fade-in { opacity:0; transform:translateY(30px); transition:opacity 0.7s ease, transform 0.7s ease; }
+    .fade-in.visible { opacity:1; transform:translateY(0); }
+    .fade-in-left { opacity:0; transform:translateX(-30px); transition:opacity 0.7s ease, transform 0.7s ease; }
+    .fade-in-left.visible { opacity:1; transform:translateX(0); }
+    .glass { background:rgba(30,41,59,0.7); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.08); }
+    .glass-card { background:rgba(30,41,59,0.5); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.1); }
+    .gradient-text { background:linear-gradient(135deg,#6366f1,#8b5cf6,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .gradient-bg { background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 40%,#0f172a 100%); }
+    .gradient-hero { background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%); }
+    .card-hover { transition:all 0.3s ease; }
+    .card-hover:hover { transform:translateY(-4px); box-shadow:0 0 40px rgba(139,92,246,0.35); }
+    .timeline-line { position:absolute; left:15px; top:40px; bottom:0; width:2px; background:linear-gradient(to bottom,#6366f1,#8b5cf6,#ec4899); }
+    .timeline-dot { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 0 16px rgba(99,102,241,0.5); }
+    .accordion-content { max-height:0; overflow:hidden; transition:max-height 0.4s ease; }
+    .accordion-content.open { max-height:2000px; }
+    .hero-orb { position:absolute; border-radius:50%; filter:blur(80px); opacity:0.3; pointer-events:none; }
+
+    @media (prefers-reduced-motion:reduce) {
+      .fade-in, .fade-in-left, .card-hover { transition:none; animation:none; }
+      .fade-in { opacity:1; transform:none; }
+      .fade-in-left { opacity:1; transform:none; }
+    }
+
+    html { scroll-behavior:smooth; }
+    body { font-family:'Inter','Pretendard',system-ui,sans-serif; background:#0f172a; color:#e2e8f0; }
+
+    /* Architecture diagram styles */
+    .arch-box { transition:all 0.25s ease; cursor:pointer; }
+    .arch-box:hover { filter:brightness(1.2); transform:scale(1.05); }
+    .arch-arrow { marker-end:url(#arrowhead); }
+  </style>
+</head>
+<body class="min-h-screen gradient-bg text-slate-200">
+
+  <!-- ==================== HERO SECTION ==================== -->
+  <section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden gradient-hero">
+    <!-- Decorative orbs -->
+    <div class="hero-orb w-96 h-96 bg-indigo-600 top-10 left-10" style="position:absolute;"></div>
+    <div class="hero-orb w-80 h-80 bg-purple-600 bottom-10 right-10" style="position:absolute;"></div>
+    <div class="hero-orb w-64 h-64 bg-cyan-500 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20" style="position:absolute;"></div>
+
+    <div class="relative z-10 text-center px-6 max-w-4xl mx-auto">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm text-slate-300 mb-8 fade-in" style="animation:fadeInUp 0.8s ease forwards;">
+        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+        AI 에이전트 시스템 · 데스크톱 네이티브
+      </div>
+
+      <!-- Logo / Title -->
+      <div class="flex items-center justify-center gap-4 mb-6 fade-in" style="animation:fadeInUp 0.8s 0.1s ease both;">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-lg shadow-indigo-500/30">다</div>
+        <div class="text-left">
+          <h1 class="text-6xl font-extrabold gradient-text tracking-tight">다온</h1>
+          <p class="text-slate-400 text-lg tracking-widest uppercase">DAON Agent System</p>
+        </div>
+      </div>
+
+      <!-- Main tagline -->
+      <p class="text-2xl md:text-3xl font-bold text-white leading-relaxed mb-4 fade-in" style="animation:fadeInUp 0.8s 0.2s ease both;">
+        여러분이 일을 시키면,<br />
+        <span class="gradient-text">AI 에이전트들이 팀을 짜서 알아서 처리합니다.</span>
+      </p>
+
+      <!-- Sub description -->
+      <p class="text-slate-400 text-lg mb-10 max-w-2xl mx-auto fade-in" style="animation:fadeInUp 0.8s 0.3s ease both;">
+        컴퓨터 앞에서 "이거 해줘"라는 말만으로, 내부 AI 팀이 일을 나눠 맡고 확인하고 결과물을 가져다 줍니다. 프로그래밍도, 복잡한 설정도 몰라도 됩니다.
+      </p>
+
+      <!-- Glass CTA card -->
+      <div class="glass-card rounded-2xl p-8 max-w-lg mx-auto mb-10 fade-in" style="animation:fadeInUp 0.8s 0.4s ease both;">
+        <p class="text-slate-300 text-base mb-6">
+          다온이 <span class="text-indigo-400 font-semibold">여러분을 위해 일하는 디지털 직원</span>이 되어 드립니다.
+        </p>
+        <a href="#guide" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50">
+          <i data-lucide="arrow-down" class="w-5 h-5"></i>
+          아래로 스크롤해서 더 알아보기
+        </a>
+      </div>
+
+      <!-- Scroll hint -->
+      <div class="text-slate-500 text-sm flex items-center justify-center gap-2 fade-in" style="animation:float 2s ease-in-out infinite; animation-delay:0.8s;">
+        <i data-lucide="chevrons-down" class="w-5 h-5"></i>
+        scroll
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== GUIDE (5-MIN UNDERSTANDING) ==================== -->
+  <section id="guide" class="py-24 px-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 mb-4">5분 이해 가이드</span>
+        <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">다온은 뭘로 움직이는 거예요?</h2>
+        <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+          한 문장으로 보면, 다온은 <span class="text-indigo-400 font-semibold">"AI 프로젝트 매니저 + 개발팀 + 비서"</span>가 한 앱에 들어 있는 것입니다.
+        </p>
+      </div>
+
+      <!-- Analogy -->
+      <div class="glass-card rounded-2xl p-8 mb-16 max-w-3xl mx-auto fade-in">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="lightbulb" class="w-6 h-6 text-amber-400"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-white mb-3">일상 비유로 이해하기</h3>
+            <p class="text-slate-300 leading-relaxed mb-4">
+              신입 직원에게 일을 시킬 때를 떠올려 보세요. <em class="text-slate-400">"이 파일 열고, 이 부분 복사하고, 저 문서에 붙여넣고…"</em> 라고 한 단계씩 알려줘야 합니다. 짜증 나고, 실수도 잦고, 기억도 못 합니다.
+            </p>
+            <p class="text-slate-300 leading-relaxed mb-4">
+              하지만 <span class="text-indigo-400 font-semibold">경험 많은 AI 팀장</span>에게는 한마디면 끝납니다.
+            </p>
+            <div class="bg-slate-800/60 rounded-xl p-4 border-l-4 border-indigo-500">
+              <p class="text-indigo-300 font-medium italic">"지난달 보고서 10개를 하나로 정리해서 표로 만들어 줘."</p>
+            </div>
+            <p class="text-slate-300 leading-relaxed mt-4">
+              팀장이 일의 성격을 파악하고 → 누가 자료를 찾고, 누가 요약하고, 누가 표를 만들지 → 알아서 팀을 꾸리고 → 검토를 거쳐 완성된 결과물을 여러분 책상 위에 올려놓습니다. <span class="text-cyan-400 font-semibold">여러분은 시작만 말하면 됩니다.</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparison table -->
+      <div class="fade-in">
+        <h3 class="text-2xl font-bold text-white text-center mb-8">일반 AI 챗봇 vs 다온</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-700">
+                <th class="py-4 px-6 text-slate-400 font-medium text-sm">비교 항목</th>
+                <th class="py-4 px-6 text-slate-400 font-medium text-sm">일반 AI 챗봇</th>
+                <th class="py-4 px-6 text-indigo-400 font-semibold text-sm">다온 (DAON)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-4 px-6 text-slate-300 font-medium">일을 시키는 방식</td>
+                <td class="py-4 px-6 text-slate-400">내가 원하는 답이 나올 때까지 질문을 다듬어야 함</td>
+                <td class="py-4 px-6 text-indigo-300">"이거 해줘" 한마디면 AI 팀이 알아서 처리</td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-4 px-6 text-slate-300 font-medium">실제 작업 수행</td>
+                <td class="py-4 px-6 text-slate-400">대화만 함. 결과물은 내가 직접 만들러 가야 함</td>
+                <td class="py-4 px-6 text-indigo-300">파일 정리, 웹 검색, 문서 작성, 표 만들기까지 직접 수행</td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-4 px-6 text-slate-300 font-medium">기억력</td>
+                <td class="py-4 px-6 text-slate-400">대화창 닫으면 까먹음</td>
+                <td class="py-4 px-6 text-indigo-300">내 취향과 환경을 기억하는 옆자리 비서</td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-4 px-6 text-slate-300 font-medium">팀워크</td>
+                <td class="py-4 px-6 text-slate-400">혼자서 모든 걸 답해야 함</td>
+                <td class="py-4 px-6 text-indigo-300">전담 AI 팀이 역할을 나눠 일함</td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-4 px-6 text-slate-300 font-medium">도구 활용</td>
+                <td class="py-4 px-6 text-slate-400">보통 텍스트만</td>
+                <td class="py-4 px-6 text-indigo-300">인터넷 브라우저, 파일, 각종 도구를 직접 다룸</td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-4 px-6 text-slate-300 font-medium">실수 대응</td>
+                <td class="py-4 px-6 text-slate-400">같은 실수 반복</td>
+                <td class="py-4 px-6 text-indigo-300">실패하면 스스로 방법을 바꿔 재시도</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-8 text-center glass-card rounded-xl p-6 max-w-xl mx-auto">
+          <p class="text-white font-bold text-lg">
+            챗봇은 <span class="text-slate-400">"말 잘하는 친구"</span> · 다온은 <span class="gradient-text">"일을 끝내 주는 팀"</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== ARCHITECTURE DIAGRAM ==================== -->
+  <section id="architecture" class="py-24 px-6 bg-slate-900/50">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 mb-4">아키텍처</span>
+        <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">다온은 어떻게 일할까요?</h2>
+        <p class="text-slate-400 text-lg">내부 구조를 한눈에 살펴보세요. 호버하면 각 요소가 무엇을 하는지 알 수 있습니다.</p>
+      </div>
+
+      <div class="fade-in" x-data="{ hovered: null }">
+        <div class="relative overflow-x-auto pb-4">
+          <svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" class="w-full min-w-[700px]">
+            <defs>
+              <linearGradient id="grad-indigo" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="grad-purple" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="grad-cyan" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#22d3ee;stop-opacity:1" />
+              </linearGradient>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" opacity="0.7"/>
+              </marker>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+
+            <!-- ── MAIN FLOW ROW ── -->
+            <!-- User -->
+            <g class="arch-box" @mouseenter="hovered='user'" @mouseleave="hovered=null">
+              <rect x="20" y="210" width="100" height="70" rx="16" fill="url(#grad-indigo)" filter="url(#glow)"/>
+              <text x="70" y="240" text-anchor="middle" fill="white" font-size="13" font-weight="bold">사용자</text>
+              <text x="70" y="258" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="10">여러분</text>
+            </g>
+            <!-- Arrow user->app -->
+            <line x1="120" y1="245" x2="155" y2="245" stroke="#6366f1" stroke-width="2" opacity="0.6" class="arch-arrow"/>
+
+            <!-- DAON App -->
+            <g class="arch-box" @mouseenter="hovered='app'" @mouseleave="hovered=null">
+              <rect x="160" y="180" width="140" height="130" rx="16" fill="rgba(30,41,59,0.9)" stroke="#6366f1" stroke-width="2"/>
+              <text x="230" y="215" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="bold">다온 앱</text>
+              <text x="230" y="233" text-anchor="middle" fill="#94a3b8" font-size="9">9090 포트 · Electron</text>
+              <!-- 3 panel mini icons -->
+              <rect x="175" y="248" width="30" height="48" rx="4" fill="rgba(99,102,241,0.2)" stroke="rgba(99,102,241,0.4)" stroke-width="1"/>
+              <rect x="212" y="248" width="30" height="48" rx="4" fill="rgba(99,102,241,0.2)" stroke="rgba(99,102,241,0.4)" stroke-width="1"/>
+              <rect x="249" y="248" width="30" height="48" rx="4" fill="rgba(99,102,241,0.2)" stroke="rgba(99,102,241,0.4)" stroke-width="1"/>
+              <text x="190" y="268" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="8">좌</text>
+              <text x="227" y="268" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="8">중</text>
+              <text x="264" y="268" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="8">우</text>
+              <text x="230" y="285" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="7">3패널 UI</text>
+            </g>
+            <!-- Arrow app->planner -->
+            <line x1="300" y1="245" x2="335" y2="245" stroke="#6366f1" stroke-width="2" opacity="0.6" class="arch-arrow"/>
+
+            <!-- CEO Planner -->
+            <g class="arch-box" @mouseenter="hovered='planner'" @mouseleave="hovered=null">
+              <rect x="340" y="200" width="120" height="90" rx="16" fill="url(#grad-purple)" filter="url(#glow)"/>
+              <text x="400" y="232" text-anchor="middle" fill="white" font-size="13" font-weight="bold">CEO</text>
+              <text x="400" y="248" text-anchor="middle" fill="white" font-size="13" font-weight="bold">Planner</text>
+              <text x="400" y="268" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">일 총괄 기획자</text>
+            </g>
+            <!-- Arrow planner->team -->
+            <line x1="460" y1="245" x2="495" y2="245" stroke="#8b5cf6" stroke-width="2" opacity="0.6" class="arch-arrow"/>
+
+            <!-- Agent Team -->
+            <g class="arch-box" @mouseenter="hovered='team'" @mouseleave="hovered=null">
+              <rect x="500" y="190" width="120" height="110" rx="16" fill="rgba(30,41,59,0.9)" stroke="#8b5cf6" stroke-width="2"/>
+              <text x="560" y="218" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="bold">에이전트 팀</text>
+              <text x="560" y="234" text-anchor="middle" fill="#94a3b8" font-size="9">자동 편성</text>
+              <!-- Mini agent icons -->
+              <circle cx="522" cy="258" r="12" fill="rgba(139,92,246,0.3)" stroke="rgba(139,92,246,0.6)" stroke-width="1"/>
+              <text x="522" y="262" text-anchor="middle" fill="white" font-size="8">검색</text>
+              <circle cx="560" cy="258" r="12" fill="rgba(139,92,246,0.3)" stroke="rgba(139,92,246,0.6)" stroke-width="1"/>
+              <text x="560" y="262" text-anchor="middle" fill="white" font-size="8">요약</text>
+              <circle cx="598" cy="258" r="12" fill="rgba(139,92,246,0.3)" stroke="rgba(139,92,246,0.6)" stroke-width="1"/>
+              <text x="598" y="262" text-anchor="middle" fill="white" font-size="8">작성</text>
+            </g>
+
+            <!-- Execute -->
+            <g class="arch-box" @mouseenter="hovered='execute'" @mouseleave="hovered=null">
+              <rect x="500" y="320" width="80" height="55" rx="12" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="1.5"/>
+              <text x="540" y="344" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold">실행</text>
+              <text x="540" y="360" text-anchor="middle" fill="#94a3b8" font-size="9">검색·파일</text>
+            </g>
+            <!-- Arrow team->execute -->
+            <line x1="540" y1="300" x2="540" y2="318" stroke="#06b6d4" stroke-width="1.5" opacity="0.5" class="arch-arrow"/>
+            <!-- Arrow team->result -->
+            <line x1="560" y1="245" x2="700" y2="245" stroke="#8b5cf6" stroke-width="2" opacity="0.6" class="arch-arrow"/>
+
+            <!-- Verify -->
+            <g class="arch-box" @mouseenter="hovered='verify'" @mouseleave="hovered=null">
+              <rect x="500" y="390" width="80" height="55" rx="12" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="1.5"/>
+              <text x="540" y="414" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold">검증</text>
+              <text x="540" y="430" text-anchor="middle" fill="#94a3b8" font-size="9">품질 관리</text>
+            </g>
+            <!-- Arrow execute->verify -->
+            <line x1="560" y1="375" x2="560" y2="388" stroke="#06b6d4" stroke-width="1.5" opacity="0.5"/>
+
+            <!-- Result -->
+            <g class="arch-box" @mouseenter="hovered='result'" @mouseleave="hovered=null">
+              <rect x="705" y="210" width="100" height="70" rx="16" fill="url(#grad-cyan)" filter="url(#glow)"/>
+              <text x="755" y="240" text-anchor="middle" fill="white" font-size="13" font-weight="bold">결과</text>
+              <text x="755" y="258" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="10">채팅창 도착</text>
+            </g>
+            <!-- Arrow verify->result -->
+            <line x1="580" y1="390" x2="705" y2="245" stroke="#06b6d4" stroke-width="1.5" opacity="0.5"/>
+
+            <!-- Branching arrow: planner -> resources -->
+            <path d="M 400 200 Q 400 120 280 100" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-dasharray="5,3" opacity="0.5"/>
+            <text x="300" y="95" fill="#6366f1" font-size="9" opacity="0.7">도구/자원</text>
+
+            <!-- ── RESOURCE ROW ── -->
+            <rect x="40" y="50" width="820" height="50" rx="12" fill="rgba(30,41,59,0.5)" stroke="rgba(99,102,241,0.2)" stroke-width="1" stroke-dasharray="4,3"/>
+
+            <!-- Resource boxes -->
+            <g class="arch-box" @mouseenter="hovered='browser'" @mouseleave="hovered=null">
+              <rect x="60" y="58" width="120" height="34" rx="8" fill="rgba(99,102,241,0.2)" stroke="rgba(99,102,241,0.5)" stroke-width="1"/>
+              <text x="120" y="80" text-anchor="middle" fill="#a5b4fc" font-size="11">🌐 공유 브라우저</text>
+            </g>
+            <g class="arch-box" @mouseenter="hovered='tools'" @mouseleave="hovered=null">
+              <rect x="200" y="58" width="100" height="34" rx="8" fill="rgba(6,182,212,0.15)" stroke="rgba(6,182,212,0.5)" stroke-width="1"/>
+              <text x="250" y="80" text-anchor="middle" fill="#67e8f9" font-size="11">🔧 도구</text>
+            </g>
+            <g class="arch-box" @mouseenter="hovered='memory'" @mouseleave="hovered=null">
+              <rect x="320" y="58" width="120" height="34" rx="8" fill="rgba(236,72,153,0.15)" stroke="rgba(236,72,153,0.5)" stroke-width="1"/>
+              <text x="380" y="80" text-anchor="middle" fill="#f9a8d4" font-size="11">🧠 메모리</text>
+            </g>
+            <g class="arch-box" @mouseenter="hovered='plugins'" @mouseleave="hovered=null">
+              <rect x="460" y="58" width="120" height="34" rx="8" fill="rgba(16,185,129,0.15)" stroke="rgba(16,185,129,0.5)" stroke-width="1"/>
+              <text x="520" y="80" text-anchor="middle" fill="#6ee7b7" font-size="11">🧩 플러그인</text>
+            </g>
+            <g class="arch-box" @mouseenter="hovered='mcp'" @mouseleave="hovered=null">
+              <rect x="600" y="58" width="100" height="34" rx="8" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.5)" stroke-width="1"/>
+              <text x="650" y="80" text-anchor="middle" fill="#fcd34d" font-size="11">⚡ MCP</text>
+            </g>
+            <g class="arch-box" @mouseenter="hovered='skills'" @mouseleave="hovered=null">
+              <rect x="720" y="58" width="110" height="34" rx="8" fill="rgba(99,102,241,0.2)" stroke="rgba(99,102,241,0.5)" stroke-width="1"/>
+              <text x="775" y="80" text-anchor="middle" fill="#a5b4fc" font-size="11">📘 스킬</text>
+            </g>
+
+            <!-- Arrow from branch line to resources -->
+            <line x1="280" y1="100" x2="120" y2="100" stroke="#6366f1" stroke-width="1" opacity="0.3"/>
+            <line x1="120" y1="92" x2="120" y2="92" stroke="#6366f1" stroke-width="1" opacity="0.3"/>
+
+            <!-- Legend / Tooltip area -->
+            <g x="620" y="430">
+              <template x-if="hovered === 'user'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#a5b4fc" font-size="11" font-weight="bold">사용자</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">여러분입니다. 한마디로 일을 시키는 사람.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'app'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#a5b4fc" font-size="11" font-weight="bold">다온 앱</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">모든 것이 돌아가는 작업실. 3패널 UI.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'planner'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(139,92,246,0.15)" stroke="#8b5cf6" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="bold">CEO (Planner)</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">일의 성격을 파악하는 총괄 기획자.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'team'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(139,92,246,0.15)" stroke="#8b5cf6" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="bold">에이전트 팀</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">일감별로 자동 편성되는 AI 직원들.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'execute'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#67e8fc" font-size="11" font-weight="bold">실행</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">검색, 파일 작성, 브라우저 조작 등 실제 작업.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'verify'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#67e8fc" font-size="11" font-weight="bold">검증</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">결과물을 점검하는 품질 관리 단계.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'result'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#67e8fc" font-size="11" font-weight="bold">결과</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">완성된 결과물이 채팅창에 도착.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'browser'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#a5b4fc" font-size="11" font-weight="bold">공유 브라우저</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">내장 WebContentsView · CDP 9222 · file://도 내부 처리.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'tools'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#67e8fc" font-size="11" font-weight="bold">도구</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">파일 읽기·쓰기, 코드 실행 등 AI가 쓰는 작업 도구.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'memory'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(236,72,153,0.15)" stroke="#ec4899" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#f9a8d4" font-size="11" font-weight="bold">메모리</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">사용자 취향·환경·규칙을 저장하는 장기 기억.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'plugins'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="bold">플러그인</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">스마트폰에 앱 설치하듯 기능을 더하는 확장팩.</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'mcp'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#fcd34d" font-size="11" font-weight="bold">MCP 서버</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">7개 서버 자동 연결 (filesystem/playwright/memory 등).</text>
+                </g>
+              </template>
+              <template x-if="hovered === 'skills'">
+                <g>
+                  <rect x="610" y="420" width="270" height="40" rx="8" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="1"/>
+                  <text x="745" y="440" text-anchor="middle" fill="#a5b4fc" font-size="11" font-weight="bold">스킬</text>
+                  <text x="745" y="454" text-anchor="middle" fill="#94a3b8" font-size="9">마크다운 한 장 = 전문가 작업 매뉴얼. 16+ 내장.</text>
+                </g>
+              </template>
+            </g>
+
+            <!-- Side note -->
+            <text x="450" y="510" text-anchor="middle" fill="#475569" font-size="9">※ 호버하면 각 컴포넌트의 역할을 볼 수 있습니다</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Node legend below -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 fade-in">
+        <div class="glass-card rounded-lg px-4 py-3 text-sm">
+          <span class="text-indigo-400 font-semibold">사용자</span>
+          <span class="text-slate-400 ml-1">— 일을 시키는 분</span>
+        </div>
+        <div class="glass-card rounded-lg px-4 py-3 text-sm">
+          <span class="text-purple-400 font-semibold">CEO Planner</span>
+          <span class="text-slate-400 ml-1">— 팀 총괄</span>
+        </div>
+        <div class="glass-card rounded-lg px-4 py-3 text-sm">
+          <span class="text-cyan-400 font-semibold">실행 / 검증</span>
+          <span class="text-slate-400 ml-1">— 품질 관리</span>
+        </div>
+        <div class="glass-card rounded-lg px-4 py-3 text-sm">
+          <span class="text-emerald-400 font-semibold">자원群</span>
+          <span class="text-slate-400 ml-1">— 도구·기억·플러그인</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== 10 DIFFERENTIATORS ==================== -->
+  <section id="differentiators" class="py-24 px-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-pink-500/20 text-pink-300 mb-4">핵심 차별점</span>
+        <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">일반 AI와 무엇이 다른가요?</h2>
+        <p class="text-slate-400 text-lg">다온만의 10가지 특별한 능력입니다.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Card 1 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="users" class="w-6 h-6 text-indigo-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">1. 다중 에이전트 자동 팀 편성</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            질문 한마디를 던지면, 다온이 일의 성격을 파악해 <span class="text-indigo-400">알맞은 AI 팀을 자동으로 꾸려 줍니다.</span> 회사에서 프로젝트가 생기면 팀장이 인재를 골라 팀을 만드는 것과 같습니다.
+          </p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="git-branch" class="w-6 h-6 text-purple-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">2. 다이나믹 하네스</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            AI 팀장이 일의 성격을 파악하고, 팀원과 도구를 자동으로 배치합니다. 필요한 순간에 필요한 도구와 스킬을 <span class="text-purple-400">즉석에서 꺼내 연결</span>하기 때문에, "이 도구는 어디서 다운로드하지?" 같은 고민이 필요 없습니다.
+          </p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="refresh-cw" class="w-6 h-6 text-amber-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">3. 자기 치유 루프</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            일을 하다 실패하면, 다온은 <span class="text-amber-400">능력을 보강해서 다시 시도합니다 (최대 2회).</span> 요리를 태웠을 때 포기하지 않고 레시피를 바꿔 다시 만드는 셰프처럼요.
+          </p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500/20 to-rose-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="brain" class="w-6 h-6 text-pink-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">4. 장기기억 메모리</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            <span class="text-pink-400">옆자리에 앉은 비서가 당신의 취향을 기억하듯,</span> 다온은 사용자의 선호, 환경, 규칙을 영구 저장합니다. 대화창을 닫아도 기억은 남아 있습니다.
+          </p>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="monitor" class="w-6 h-6 text-cyan-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">5. 공유 브라우저 자동화</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            여러분이 로그인해 둔 컴퓨터를 라온(AI)이 <span class="text-cyan-400">사람처럼 사용하는 것과 같습니다.</span> 로그인이 필요한 사이트도 세션을 그대로 빌려서 작업합니다.
+          </p>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="puzzle" class="w-6 h-6 text-emerald-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">6. 플러그인 생태계</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            <span class="text-emerald-400">스마트폰에 앱을 설치하듯,</span> 다온에 새 기능을 추가할 수 있습니다. 외부에서 만든 플러그인도 자동으로 다온 형식에 맞게 변환해 등록해 줍니다.
+          </p>
+        </div>
+
+        <!-- Card 7 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="layers" class="w-6 h-6 text-blue-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">7. 다중 LLM</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            다온은 한 회사의 AI만 쓰지 않습니다. <span class="text-blue-400">OpenAI, Anthropic, DeepSeek, Ollama 등</span> 여러 AI 두뇌 중에서 자유롭게 선택할 수 있습니다.
+          </p>
+        </div>
+
+        <!-- Card 8 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-500/20 to-zinc-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="hard-drive" class="w-6 h-6 text-slate-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">8. 로컬 우선</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            다온은 <span class="text-slate-300">인터넷이 없어도 작동하고, 데이터도 내 컴퓨터에 저장</span>됩니다. 중요한 자료가 밖으로 나갈 걱정이 없습니다. 내 책상 위에서 모든 일이 끝납니다.
+          </p>
+        </div>
+
+        <!-- Card 9 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="shield-check" class="w-6 h-6 text-red-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">9. 안전 가드</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            위험한 명령은 바로 실행하지 않고 <span class="text-red-400">여러분의 승인을 먼저 받는 게이트</span>가 있습니다. 언제든 즉시 정지할 수 있는 비상 정지 스위치(kill-switch)도 있습니다.
+          </p>
+        </div>
+
+        <!-- Card 10 -->
+        <div class="glass-card rounded-2xl p-6 card-hover fade-in md:col-span-2 lg:col-span-1">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center mb-4">
+            <i data-lucide="monitor-smartphone" class="w-6 h-6 text-violet-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">10. 데스크톱 네이티브</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            다온은 <span class="text-violet-400">하나의 .exe 파일로 실행되는 데스크톱 앱</span>입니다. 브라우저를 열고 주소를 입력할 필요 없이, 다운로드해서 더블클릭하면 끝.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== FEATURE DETAILS (Accordion) ==================== -->
+  <section id="features" class="py-24 px-6 bg-slate-900/50">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/20 text-cyan-300 mb-4">주요 기능 상세</span>
+        <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">다온은 어떤 기술로 움직이나요?</h2>
+        <p class="text-slate-400 text-lg">각 기능을 펼쳐서 더 자세히 살펴보세요.</p>
+      </div>
+
+      <div class="space-y-4 fade-in" x-data="{ open: null }">
+
+        <!-- Accordion: Dynamic Harness -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 1 ? null : 1" class="w-full flex items-center gap-4 p-6 text-left" :aria-expanded="open === 1">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="git-branch" class="w-5 h-5 text-indigo-400"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-bold text-lg">🔧 다이나믹 하네스 (Dynamic Harness)</h3>
+              <p class="text-slate-400 text-sm mt-1">AI 팀장이 일의 성격을 파악하고 자동으로 팀을 구성합니다</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-300" :class="open===1?'rotate-180':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===1?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed mb-4">
+                다온의 두뇌 역할을 하는 <strong class="text-indigo-400">Planner가 CEO처럼 전체 일정을 지휘</strong>합니다. 일이 들어오면 자기 스스로 팀을 구성하고(자기구성), 막히면 방법을 바꿔 다시 시도합니다(자기치유).
+              </p>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-800/50 rounded-xl p-4">
+                  <p class="text-indigo-400 font-semibold text-sm mb-1">�構成 — 자기구성</p>
+                  <p class="text-slate-400 text-xs">일의 성격에 맞춰 에이전트·도구·스킬 자동 배선</p>
+                </div>
+                <div class="bg-slate-800/50 rounded-xl p-4">
+                  <p class="text-purple-400 font-semibold text-sm mb-1">🔄 — 자기치유</p>
+                  <p class="text-slate-400 text-xs">실패 시 능력 보강하여 최대 2회 재시도</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion: Memory -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 2 ? null : 2" class="w-full flex items-center gap-4 p-6 text-left" :aria-expanded="open === 2">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500/30 to-rose-500/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="brain" class="w-5 h-5 text-pink-400"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-bold text-lg">🧠 장기기억 메모리 (Memory System)</h3>
+              <p class="text-slate-400 text-sm mt-1">6단계 체계로 사실·관찰·규칙을 구조적으로 저장합니다</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-300" :class="open===2?'rotate-180':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===2?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed mb-4">
+                메모리는 <strong class="text-pink-400">6단계 체계</strong>로 운영되며, 단순 대화 저장이 아니라 <strong class="text-pink-400">사실(Fact), 관찰(Observation), 규칙(Rule)</strong>을 구분해 기억합니다.
+              </p>
+              <div class="space-y-2">
+                <div class="flex items-center gap-3 p-3 bg-slate-800/40 rounded-lg"><span class="text-pink-400 font-mono text-xs w-16">Fact</span><span class="text-slate-300 text-sm">"사용자는 표로 된 결과를 선호한다"</span></div>
+                <div class="flex items-center gap-3 p-3 bg-slate-800/40 rounded-lg"><span class="text-pink-400 font-mono text-xs w-16">Rule</span><span class="text-slate-300 text-sm">"보고서에는 반드시 출처를 단다"</span></div>
+                <div class="flex items-center gap-3 p-3 bg-slate-800/40 rounded-lg"><span class="text-pink-400 font-mono text-xs w-16">Obs</span><span class="text-slate-300 text-sm">"프로젝트 폴더는 D:\work 기준이다"</span></div>
+              </div>
+              <p class="text-slate-400 text-sm mt-4">시간이 지날수록 더 똑똑해지는 것이 특징입니다.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion: Skills -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 3 ? null : 3" class="w-full flex items-center gap-4 p-6 text-left" :aria-expanded="open === 3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/30 to-indigo-500/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="book-open" class="w-5 h-5 text-blue-400"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-bold text-lg">📘 스킬 시스템 (Skills)</h3>
+              <p class="text-slate-400 text-sm mt-1">마크다운 한 장이 곧 전문가 작업 매뉴얼입니다</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-300" :class="open===3?'rotate-180':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===3?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed mb-4">
+                <strong class="text-blue-400">"이런 일이 들어오면 이렇게 처리해라"</strong>라는 지침을 담은 스킬을 읽는 것만으로, AI가 검증된 방식대로 일합니다. 현재 <strong class="text-blue-400">16개 이상의 내장 스킬</strong>이 준비되어 있습니다.
+              </p>
+              <div class="grid grid-cols-4 gap-2">
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-lg px-3 py-2 text-center">파일 정리</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-lg px-3 py-2 text-center">웹 검색</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-lg px-3 py-2 text-center">문서 작성</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-lg px-3 py-2 text-center">표 만들기</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-lg px-3 py-2 text-center">코드 리뷰</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-lg px-3 py-2 text-center">번역</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-lg px-3 py-2 text-center">요약</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-lg px-3 py-2 text-center">...16+</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion: Shared Browser -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 4 ? null : 4" class="w-full flex items-center gap-4 p-6 text-left" :aria-expanded="open === 4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/30 to-blue-500/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="monitor" class="w-5 h-5 text-cyan-400"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-bold text-lg">🌐 공유 브라우저 (Shared Browser)</h3>
+              <p class="text-slate-400 text-sm mt-1">WebContentsView + CDP 9222로 파일://도 내부 처리</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-300" :class="open===4?'rotate-180':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===4?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed mb-4">
+                다온 안에 <strong class="text-cyan-400">WebContentsView 기반의 브라우저가 내장</strong>되어 있고, CDP(포트 9222)로 제어됩니다. 파일(<code class="text-cyan-400 bg-slate-800 px-1 rounded">file://</code>) 주소도 앱 내부에서 그대로 처리하므로, 컴퓨터에 있는 문서나 사이트를 자유롭게 열어 작업할 수 있습니다.
+              </p>
+              <p class="text-slate-400 text-sm">
+                별도의 브라우저 창이 튀어나오지 않아, 모든 일이 다온 안에서 끝납니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion: Plugin/MCP -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 5 ? null : 5" class="w-full flex items-center gap-4 p-6 text-left" :aria-expanded="open === 5">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="puzzle" class="w-5 h-5 text-emerald-400"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-bold text-lg">🧩 플러그인 / MCP</h3>
+              <p class="text-slate-400 text-sm mt-1">외부 플러그인 자동 변환 + MCP 7개 서버 자동 연결</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-300" :class="open===5?'rotate-180':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===5?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed mb-4">
+                <strong class="text-emerald-400">외부 플러그인을 다온 형식으로 자동 변환</strong>해 등록합니다 (예: wshobson 형식 변환). 또 <strong class="text-emerald-400">MCP 서버 7개를 자동 연결</strong>해 다양한 기능을 즉시 사용할 수 있습니다.
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span class="bg-emerald-500/10 text-emerald-300 text-xs rounded-full px-3 py-1">filesystem</span>
+                <span class="bg-emerald-500/10 text-emerald-300 text-xs rounded-full px-3 py-1">playwright</span>
+                <span class="bg-emerald-500/10 text-emerald-300 text-xs rounded-full px-3 py-1">memory</span>
+                <span class="bg-emerald-500/10 text-emerald-300 text-xs rounded-full px-3 py-1">daon-design</span>
+                <span class="bg-emerald-500/10 text-emerald-300 text-xs rounded-full px-3 py-1">figma</span>
+                <span class="bg-emerald-500/10 text-emerald-300 text-xs rounded-full px-3 py-1">playmcp-gateway</span>
+                <span class="bg-emerald-500/10 text-emerald-300 text-xs rounded-full px-3 py-1">sequential_thinking</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion: 3-Panel UI -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 6 ? null : 6" class="w-full flex items-center gap-4 p-6 text-left" :aria-expanded="open === 6">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/30 to-purple-500/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="layout-panel-top" class="w-5 h-5 text-violet-400"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-bold text-lg">🖥️ 3패널 UI</h3>
+              <p class="text-slate-400 text-sm mt-1">한 화면에서 모든 것을 보는 작업실 구조</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-300" :class="open===6?'rotate-180':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===6?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed mb-4">
+                한 화면에서 모든 것을 볼 수 있는 <strong class="text-violet-400">3칸 구조</strong>입니다.
+              </p>
+              <div class="grid grid-cols-3 gap-3">
+                <div class="bg-slate-800/50 rounded-xl p-4 text-center">
+                  <p class="text-2xl mb-2">📂</p>
+                  <p class="text-white font-semibold text-sm">좌: 사이드바</p>
+                  <p class="text-slate-400 text-xs mt-1">메뉴·내비게이션</p>
+                </div>
+                <div class="bg-slate-800/50 rounded-xl p-4 text-center">
+                  <p class="text-2xl mb-2">🌐</p>
+                  <p class="text-white font-semibold text-sm">중: 공유 브라우저</p>
+                  <p class="text-slate-400 text-xs mt-1">웹/파일 화면</p>
+                </div>
+                <div class="bg-slate-800/50 rounded-xl p-4 text-center">
+                  <p class="text-2xl mb-2">💬</p>
+                  <p class="text-white font-semibold text-sm">우: 채팅창</p>
+                  <p class="text-slate-400 text-xs mt-1">대화하는 창</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion: Multi-LLM -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 7 ? null : 7" class="w-full flex items-center gap-4 p-6 text-left" :aria-expanded="open === 7">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/30 to-cyan-500/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="layers" class="w-5 h-5 text-blue-400"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-bold text-lg">🔌 다중 LLM 프로바이더</h3>
+              <p class="text-slate-400 text-sm mt-1">16개 이상의 AI 제공업체를 지원합니다</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-300" :class="open===7?'rotate-180':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===7?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed mb-4">
+                <strong class="text-blue-400">OpenAI, Anthropic, DeepSeek, Ollama(로컬 실행)</strong> 등 — 회사나 취향, 비용에 맞춰 자유롭게 고르고 바꿀 수 있습니다.
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-full px-3 py-1">OpenAI</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-full px-3 py-1">Anthropic</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-full px-3 py-1">DeepSeek</span>
+                <span class="bg-blue-500/10 text-blue-300 text-xs rounded-full px-3 py-1">Ollama</span>
+                <span class="bg-slate-700 text-slate-300 text-xs rounded-full px-3 py-1">...+12</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion: Desktop Deploy -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 8 ? null : 8" class="w-full flex items-center gap-4 p-6 text-left" :aria-expanded="open === 8">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/30 to-orange-500/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="package" class="w-5 h-5 text-amber-400"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-bold text-lg">📦 데스크톱 배포</h3>
+              <p class="text-slate-400 text-sm mt-1">PyInstaller + electron-builder로 빌드된 네이티브 앱</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-300" :class="open===8?'rotate-180':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===8?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed mb-4">
+                <strong class="text-amber-400">PyInstaller + electron-builder</strong>로 빌드된 네이티브 데스크톱 앱이며, <strong class="text-amber-400">설치형과 portable ZIP</strong> 두 가지로 배포됩니다.
+              </p>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-800/50 rounded-xl p-4">
+                  <p class="text-amber-400 font-semibold text-sm mb-1">🖥️ 설치형 (Installer)</p>
+                  <p class="text-slate-400 text-xs">마법사로 간단 설치, 시작 메뉴에서 실행</p>
+                </div>
+                <div class="bg-slate-800/50 rounded-xl p-4">
+                  <p class="text-amber-400 font-semibold text-sm mb-1">📦 Portable ZIP</p>
+                  <p class="text-slate-400 text-xs">압축 풀고 더블클릭. USB에 담아 어디서든</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== SCENARIOS (Timeline) ==================== -->
+  <section id="scenarios" class="py-24 px-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 mb-4">실제 사용 시나리오</span>
+        <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">어떤 일을 시킬 수 있나요?</h2>
+        <p class="text-slate-400 text-lg">실생활에서 다온을 이렇게 쓸 수 있습니다.</p>
+      </div>
+
+      <!-- Scenario 1 -->
+      <div class="relative pl-12 mb-12 fade-in">
+        <div class="timeline-line" style="top:40px;bottom:-20px;"></div>
+        <div class="timeline-dot absolute left-0 top-1 text-white text-sm font-bold">1</div>
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="text-xl font-bold text-white mb-2">📊 "보고서 10개 정리해 줘"</h3>
+          <p class="text-slate-300 mb-4">
+            월말, 폴더에 쌓인 10개의 보고서가 있습니다. 다온에 말하면 → 자동 팀이 편성됩니다 → 팀원이 검색으로 자료를 찾고, 요약하고, 표를 작성합니다 → 검증 후 정리된 결과물이 채팅창에 도착합니다.
+          </p>
+          <div class="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 text-sm rounded-full px-4 py-1">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            소요 시간: 대화 한마디 + 커피 한 잔
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario 2 -->
+      <div class="relative pl-12 mb-12 fade-in">
+        <div class="timeline-line" style="top:40px;bottom:-20px;"></div>
+        <div class="timeline-dot absolute left-0 top-1 text-white text-sm font-bold">2</div>
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="text-xl font-bold text-white mb-2">🔐 "로그인 필요한 사이트에서 데이터 수집"</h3>
+          <p class="text-slate-300 mb-4">
+            회원가입을 해야만 접근할 수 있는 사이트의 정보가 필요합니다. 여러분이 <strong class="text-cyan-400">한 번만 로그인</strong>해 두면 → 라온이 그 세션을 빌려 사람처럼 사이트를 탐색하고 → 필요한 데이터를 수집·정리해 드립니다.
+          </p>
+          <div class="inline-flex items-center gap-2 bg-cyan-500/10 text-cyan-400 text-sm rounded-full px-4 py-1">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            비밀번호를 요구하지 않으며, 내 컴퓨터 안에서만 움직임
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario 3 -->
+      <div class="relative pl-12 mb-12 fade-in">
+        <div class="timeline-line" style="top:40px;bottom:-20px;"></div>
+        <div class="timeline-dot absolute left-0 top-1 text-white text-sm font-bold">3</div>
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="text-xl font-bold text-white mb-2">🧩 "다온 앱 자체에 새 기능 추가"</h3>
+          <p class="text-slate-300 mb-4">
+            "다온아, 이런 기능이 있었으면 좋겠어"라고 말하면 → 다온이 플러그인 뼈대(스캐폴드)를 자동으로 만들고 → 등록과 활성화까지 즉시 처리합니다. 스마트폰에 앱 하나 깔 듯, 다온이 자기 자신에게 기능을 더해 갑니다.
+          </p>
+          <div class="inline-flex items-center gap-2 bg-purple-500/10 text-purple-400 text-sm rounded-full px-4 py-1">
+            <i data-lucide="zap" class="w-4 h-4"></i>
+            즉석에서 plugin_create + 등록 + 전역 ON 자동 처리
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario 4 -->
+      <div class="relative pl-12 fade-in">
+        <div class="timeline-dot absolute left-0 top-1 text-white text-sm font-bold">4</div>
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="text-xl font-bold text-white mb-2">🎨 "디자인 시안 5개 뽑아 줘"</h3>
+          <p class="text-slate-300 mb-4">
+            "랜딩 페이지 디자인 시안 5개 뽑아 줘"라고 하면 → <strong class="text-pink-400">Creative Director 에이전트</strong>가 참고 디자인을 분석하고 → 4단계 설계(4-layer DAG)를 거쳐 → 서로 다른 스타일의 시안 5개를 만들어 비교해 드립니다.
+          </p>
+          <div class="inline-flex items-center gap-2 bg-pink-500/10 text-pink-400 text-sm rounded-full px-4 py-1">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            StyleCard + CLIP/SigLIP 기반 4-layer DAG 파이프라인
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ==================== START GUIDE ==================== -->
+  <section id="start" class="py-24 px-6 bg-slate-900/50">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 mb-4">시작 가이드</span>
+        <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">어떻게 시작하나요?</h2>
+        <p class="text-slate-400 text-lg">다운로드부터 첫 명령까지, 순서대로 따라오세요.</p>
+      </div>
+
+      <!-- Steps -->
+      <div class="space-y-6 fade-in">
+        <!-- Step 1 -->
+        <div class="glass-card rounded-2xl p-6 flex items-start gap-5">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-lg shadow-lg shadow-indigo-500/30">1</div>
+          <div>
+            <h3 class="text-white font-bold text-xl mb-2">다온 앱 다운로드</h3>
+            <p class="text-slate-300 mb-3">공식 배포 페이지에서 <strong class="text-indigo-400">설치형(Installer)</strong> 또는 <strong class="text-indigo-400">Portable ZIP</strong>을 받으세요.</p>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div class="bg-slate-800/50 rounded-xl p-4">
+                <p class="text-indigo-400 font-semibold text-sm mb-1">🖥️ 설치형</p>
+                <p class="text-slate-400 text-xs">다운로드 → 실행 → "다음" 누르기만 하면 끝</p>
+              </div>
+              <div class="bg-slate-800/50 rounded-xl p-4">
+                <p class="text-purple-400 font-semibold text-sm mb-1">📦 Portable</p>
+                <p class="text-slate-400 text-xs">압축 풀고 실행 파일 더블클릭. USB에 담아 어디서든</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="glass-card rounded-2xl p-6 flex items-start gap-5">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-lg shadow-lg shadow-purple-500/30">2</div>
+          <div>
+            <h3 class="text-white font-bold text-xl mb-2">첫 실행 & API 키 설정</h3>
+            <p class="text-slate-300 mb-3">앱을 실행하면 첫 화면에서 <strong class="text-purple-400">AI 두뇌(LLM) 연결 설정</strong>을 안내합니다.</p>
+            <div class="bg-slate-800/50 rounded-xl p-4 space-y-2">
+              <p class="text-slate-300 text-sm">✅ <strong class="text-purple-400">OpenAI · Anthropic · DeepSeek</strong> — 사용할 서비스의 API 키 입력</p>
+              <p class="text-slate-300 text-sm">✅ <strong class="text-cyan-400">Ollama</strong> — 인터넷 없이 로컬 AI 실행 (무료)</p>
+              <p class="text-slate-500 text-xs">* 설정은 나중에 언제든 바꿀 수 있습니다</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="glass-card rounded-2xl p-6 flex items-start gap-5">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-lg shadow-lg shadow-pink-500/30">3</div>
+          <div>
+            <h3 class="text-white font-bold text-xl mb-2">첫 명령 보내기</h3>
+            <p class="text-slate-300 mb-3">일단 가볍게 인사해 보세요:</p>
+            <div class="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 rounded-xl p-4 border border-indigo-500/30">
+              <p class="text-indigo-300 font-medium italic">"안녕, 할 수 있는 일 좀 알려줘"</p>
+            </div>
+            <p class="text-slate-400 text-sm mt-3">다온이 자신이 할 수 있는 일을 소개해 드립니다. 그다음부터는 궁금한 것을 물어보고, 시킬 일을 말하면 됩니다.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommended first missions -->
+      <div class="mt-12 fade-in">
+        <h3 class="text-2xl font-bold text-white text-center mb-8">🚀 추천 첫 미션 3가지</h3>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="glass-card rounded-xl p-5 text-center card-hover">
+            <div class="text-3xl mb-3">📁</div>
+            <p class="text-white font-semibold text-sm mb-2">"내 컴퓨터에 있는 오래된 문서를 정리해 줘"</p>
+            <p class="text-slate-400 text-xs">파일 탐색 능력 체험</p>
+          </div>
+          <div class="glass-card rounded-xl p-5 text-center card-hover">
+            <div class="text-3xl mb-3">🌤️</div>
+            <p class="text-white font-semibold text-sm mb-2">"오늘 날씨 알려주고, 주말에 갈 만한 곳 추천해 줘"</p>
+            <p class="text-slate-400 text-xs">웹 검색 + 정리 능력 체험</p>
+          </div>
+          <div class="glass-card rounded-xl p-5 text-center card-hover">
+            <div class="text-3xl mb-3">📋</div>
+            <p class="text-white font-semibold text-sm mb-2">"내 업무를 하려면 뭐부터 시작하면 좋을지 계획서를 만들어 줘"</p>
+            <p class="text-slate-400 text-xs">계획·문서 작성 능력 체험</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== FAQ ==================== -->
+  <section id="faq" class="py-24 px-6">
+    <div class="max-w-3xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/20 text-cyan-300 mb-4">FAQ</span>
+        <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">자주 묻는 질문</h2>
+        <p class="text-slate-400 text-lg">궁금한 게 있으시면 먼저 여기서 찾아보세요.</p>
+      </div>
+
+      <div class="space-y-4 fade-in" x-data="{ open: null }">
+
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 1 ? null : 1" class="w-full flex items-center justify-between p-6 text-left" :aria-expanded="open === 1">
+            <h3 class="text-white font-semibold pr-4">🤖 ChatGPT랑 뭐가 달라요?</h3>
+            <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400 flex-shrink-0 transition-transform duration-300" :class="open===1?'rotate-45':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===1?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed">
+                ChatGPT는 <strong class="text-slate-200">대화에 답하는 AI</strong>이고, 다온은 <strong class="text-indigo-400">일을 끝내 주는 시스템</strong>입니다. ChatGPT가 "이렇게 하면 좋겠네요"라고 조언한다면, 다온은 "이렇게 했습니다"라고 결과물을 가져다 줍니다. 파일 정리, 웹 조사, 문서 작성, 브라우저 조작까지 — 대화를 넘어 실제 작업을 수행합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 2 ? null : 2" class="w-full flex items-center justify-between p-6 text-left" :aria-expanded="open === 2">
+            <h3 class="text-white font-semibold pr-4">🔒 내 데이터는 안전한가요?</h3>
+            <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400 flex-shrink-0 transition-transform duration-300" :class="open===2?'rotate-45':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===2?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed">
+                <strong class="text-emerald-400">안전합니다.</strong> 다온은 로컬 우선 방식이라, 여러분의 데이터는 <strong class="text-slate-200">내 컴퓨터 안에 저장</strong>됩니다. 클라우드에 자동으로 올라가지 않으며, 중요한 자료가 외부로 나갈 일이 기본적으로 없습니다. (외부 AI 서비스를 쓸 때는 해당 서비스에 보낼 내용만 전달됩니다.)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 3 ? null : 3" class="w-full flex items-center justify-between p-6 text-left" :aria-expanded="open === 3">
+            <h3 class="text-white font-semibold pr-4">💻 프로그래밍을 몰라도 쓸 수 있나요?</h3>
+            <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400 flex-shrink-0 transition-transform duration-300" :class="open===3?'rotate-45':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===3?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed">
+                <strong class="text-cyan-400">충분히 쓸 수 있습니다.</strong> 다온은 코딩을 모르는 사람을 위해 설계되었습니다. 모든 것은 한글로 대화하면 되고, 기술적인 내용은 다온이 알아서 처리합니다. 오히려 다온이 처음 프로그래밍을 배우는 선생님이 되어 줄 수도 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 4 ? null : 4" class="w-full flex items-center justify-between p-6 text-left" :aria-expanded="open === 4">
+            <h3 class="text-white font-semibold pr-4">🔑 LLM API 키는 꼭 필요한가요?</h3>
+            <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400 flex-shrink-0 transition-transform duration-300" :class="open===4?'rotate-45':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===4?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed">
+                <strong class="text-amber-400">꼭 필요한 건 아닙니다.</strong> Ollama를 설치하면 인터넷 없이도 내 컴퓨터에서 AI를 직접 실행할 수 있습니다. 무료로, 오프라인으로 시작하고 싶다면 Ollama 옵션을 선택하세요.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 5 ? null : 5" class="w-full flex items-center justify-between p-6 text-left" :aria-expanded="open === 5">
+            <h3 class="text-white font-semibold pr-4">📴 오프라인에서도 작동하나요?</h3>
+            <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400 flex-shrink-0 transition-transform duration-300" :class="open===5?'rotate-45':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===5?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed">
+                <strong class="text-slate-200">작동합니다.</strong> 로컬 AI(Ollama)와 내장 도구를 사용하면 인터넷 없이도 대부분의 작업이 가능합니다. 다만 인터넷 검색, 일부 외부 AI 서비스는 네트워크가 필요하므로, 연결된 상태에서 최고의 성능을 발휘합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 6 ? null : 6" class="w-full flex items-center justify-between p-6 text-left" :aria-expanded="open === 6">
+            <h3 class="text-white font-semibold pr-4">🧩 내 입맛대로 기능을 추가할 수 있나요?</h3>
+            <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400 flex-shrink-0 transition-transform duration-300" :class="open===6?'rotate-45':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===6?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed">
+                <strong class="text-emerald-400">할 수 있습니다.</strong> 플러그인 시스템 덕분에, 스마트폰에 앱을 설치하듯 기능을 추가할 수 있습니다. "이런 게 있었으면 좋겠다"라고 말하면 다온이 플러그인을 직접 만들어 활성화해 주기도 합니다. 외부에서 만든 플러그인도 자동 변환으로 등록됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 7 ? null : 7" class="w-full flex items-center justify-between p-6 text-left" :aria-expanded="open === 7">
+            <h3 class="text-white font-semibold pr-4">🧠 라온이 내 말을 학습하나요?</h3>
+            <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400 flex-shrink-0 transition-transform duration-300" :class="open===7?'rotate-45':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===7?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed">
+                다온의 AI는 <strong class="text-slate-200">여러분의 대화를 바탕으로 여러분을 더 잘 돕기 위해 기억</strong>합니다. 하지만 이 기억은 <strong class="text-pink-400">여러분의 컴퓨터 안의 메모리 시스템에 저장</strong>되며, 여러분의 동의 없이 외부로 전송되거나 다른 사람의 학습 데이터로 쓰이지 않습니다. 개인 비서가 당신을 기억하는 것, 그 이상도 이하도 아닙니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <button @click="open = open === 8 ? null : 8" class="w-full flex items-center justify-between p-6 text-left" :aria-expanded="open === 8">
+            <h3 class="text-white font-semibold pr-4">🆘 사고가 나면 어디서 도움을 받나요?</h3>
+            <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400 flex-shrink-0 transition-transform duration-300" :class="open===8?'rotate-45':''"></i>
+          </button>
+          <div class="accordion-content" :class="open===8?'open':''">
+            <div class="px-6 pb-6 border-t border-slate-700/50 pt-4">
+              <p class="text-slate-300 leading-relaxed">
+                먼저 <strong class="text-slate-200">다온 앱 안에서 물어보세요.</strong> 다온 스스로 문제를 진단하고 해결을 시도합니다. 문제가 반복되면 <strong class="text-red-400">안전 가드</strong>가 작업을 멈추고 알려 주며, 공식 안내 문서와 커뮤니티에서도 도움을 받을 수 있습니다. 모든 것이 로컬에 저장되어 있으므로, 잘못된 작업도 백업과 롤백으로 되돌릴 수 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="py-12 px-6 border-t border-slate-800">
+    <div class="max-w-6xl mx-auto text-center">
+      <div class="flex items-center justify-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/20">다</div>
+        <div>
+          <p class="text-white font-bold text-xl">다온 (DAON)</p>
+          <p class="text-slate-500 text-xs">AI Agent System · Desktop Native</p>
+        </div>
+      </div>
+      <p class="text-slate-500 text-sm mb-4">
+        다온은 AI 프로젝트 매니저 + 개발팀 + 비서가 한 앱에 들어 있는 데스크톱 에이전트 시스템입니다.
+      </p>
+      <div class="flex items-center justify-center gap-6 text-slate-600 text-xs">
+        <span>Electron + Python + Hermes Agent</span>
+        <span>·</span>
+        <span>9090 포트 (앱)</span>
+        <span>·</span>
+        <span>9222 포트 (CDP)</span>
+      </div>
+      <p class="text-slate-700 text-xs mt-4">© 2026 DAON Agent System. All rights reserved.</p>
+    </div>
+  </footer>
+
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <script>
+    // Lucide icons init
+    lucide.createIcons();
+
+    // IntersectionObserver for fade-in animations
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, index) => {
+        if (entry.isIntersecting) {
+          // Stagger animation
+          const delay = entry.target.dataset.delay || 0;
+          setTimeout(() => {
+            entry.target.classList.add('visible');
+          }, delay);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, observerOptions);
+
+    // Observe all fade-in elements with stagger
+    document.querySelectorAll('.fade-in').forEach((el, i) => {
+      el.dataset.delay = (i % 6) * 80;
+      observer.observe(el);
+    });
+    document.querySelectorAll('.fade-in-left').forEach((el, i) => {
+      el.dataset.delay = i * 100;
+      observer.observe(el);
+    });
+  </script>
+
+</body>
+</html>

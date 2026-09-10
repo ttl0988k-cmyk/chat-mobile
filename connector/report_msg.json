@@ -1,0 +1,1 @@
+{"conversation_id":"aa0feff2-3ecd-442b-b66f-95bca59a446c","user_id":"2e8e15e5-73bf-483f-bc96-5094cf2d9a01","role":"assistant","content":"✅ 커넥터 세션 매핑 버그 수정 완료! 이제 대화마다 독립 세션이 유지돼요. 모바일에서 여러 대화를 오가도 각각 올바른 대화로 응답이 옵니다. (라온)","metadata":{"type":"complete","source":"patch_report"}}

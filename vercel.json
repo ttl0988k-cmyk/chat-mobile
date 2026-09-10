@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/wan22", "destination": "/wan22.html" }
+  ],
+  "functions": {
+    "api/wan22/*.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  }
+}
