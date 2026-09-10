@@ -1256,26 +1256,47 @@
 
 
   async function sendMessage(text, attachments) {
+    // [FIX 2026-09-11] 더브탭/StrictMode/Enter+버튼 race 창단
     if (!currentConversationId) return;
+
+    // 동원 한 conv에 대한 in-flight Promise 가드
+    if (sendMessage._inFlight) {
+      console.warn('[sendMessage] 중복 호출 밀동 ❌');
+      return;
+    }
+    sendMessage._inFlight = true;
+
+    // 더브탭/Enter+버튼 대응: 동일 내용이 2초 이내 다시 대일 제대
+    const dedupKey = (text||'') + '|' + JSON.stringify(attachments||[]);
+    const now = Date.now();
+    if (sendMessage._lastDedup && sendMessage._lastDedup.key === dedupKey && (now - sendMessage._lastDedup.ts) < 2000) {
+      console.warn('[sendMessage] 동일 메세지 중복 (ׅ) ❌');
+      sendMessage._inFlight = false;
+      return;
+    }
+    sendMessage._lastDedup = { key: dedupKey, ts: now };
+
     setWorkingState(true);
 
-
-
-
-
-    const meta = {};
-
-
-
-
-
-    if (selectedModel) meta.model = selectedModel;  // 모델 선택 시 metadata에 전달
+    try {
 
 
 
 
 
-    if (attachments && attachments.length) {
+      const meta = {};
+
+
+
+
+
+      if (selectedModel) meta.model = selectedModel;  // 모델 선택 시 metadata에 전달
+
+
+
+
+
+      if (attachments && attachments.length) {
 
 
 
@@ -1293,25 +1314,25 @@
 
 
 
-    }
+      }
 
 
 
 
 
-    const content = text || (attachments && attachments.length ? '📎 ' + attachments.map(a => a.name).join(', ') : '');
+      const content = text || (attachments && attachments.length ? '📎 ' + attachments.map(a => a.name).join(', ') : '');
 
 
 
 
 
-    if (!content) return;
+      if (!content) return;
 
 
 
 
 
-    const { error } = await sb.from('messages').insert({
+      const { error } = await sb.from('messages').insert({
 
 
 
@@ -1347,19 +1368,19 @@
 
 
 
-    });
+      });
 
 
 
 
 
-    if (error) console.error('send:', error);
+      if (error) console.error('send:', error);
 
 
 
 
 
-    else {
+      else {
 
 
 
@@ -1395,12 +1416,15 @@
 
 
 
+      }
+
+
+
+
+
+    } finally {
+      sendMessage._inFlight = false;
     }
-
-
-
-
-
   }
 
 
