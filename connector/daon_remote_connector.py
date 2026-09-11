@@ -585,6 +585,10 @@ def sync_models_to_supabase_and_config():
     if not clean_groups:
         return False
 
+    model_data_for_hash = json.dumps({'g': clean_groups, 'd': default_model}, sort_keys=True)
+    mhash = hashlib.md5(model_data_for_hash.encode('utf-8')).hexdigest()
+    if mhash == _LAST_MODELS_HASH:
+        return True
     content_dict = {
         'groups': clean_groups,
         'models': flat_models,
@@ -592,9 +596,6 @@ def sync_models_to_supabase_and_config():
         'updated_at': time.time(),
     }
     content_json = json.dumps(content_dict, ensure_ascii=False)
-    mhash = hashlib.md5(content_json.encode('utf-8')).hexdigest()
-    if mhash == _LAST_MODELS_HASH:
-        return True
 
     # 1) mobile config.js 동기화
     try:
@@ -655,13 +656,14 @@ def sync_models_to_supabase_and_config():
         return False
 
 def _model_sync_worker():
-    """백그라운드에서 주기적으로 DAON 프로바이더 모델 동기화 (30초 주기)."""
+    """백그라운드에서 주기적으로 DAON 프로바이더 모델 동기화 및 미답변 메시지 점검."""
     while True:
         try:
             sync_models_to_supabase_and_config()
+            check_pending_user_messages()
         except Exception as e:
-            log.debug('모델 동기화 주기 실행 중 오류: %s', e)
-        time.sleep(30)
+            log.debug('백그라운드 워커 오류: %s', e)
+        time.sleep(15)
 
 
 # ── DAON 로컬 API ──────────────────────────────────────────
@@ -1417,6 +1419,29 @@ def handle_user_message(msg):
             log.info('SSE 종료(stale 스트림) — 보완 처리 생략')
 
 # ── Supabase Realtime 웹소켓 루프 (무중단 하트비트) ─────────
+
+def check_pending_user_messages():
+    """커넥터 시작 시 또는 재연결 시 최근 미처리된 유저 메시지를 자동 감지하여 실행합니다."""
+    try:
+        status, msgs = sb_request('GET', '/rest/v1/messages?role=eq.user&order=created_at.desc&limit=5', service=True)
+        if not isinstance(msgs, list) or not msgs:
+            return
+        for m in reversed(msgs):
+            mid = m.get('id')
+            cid = m.get('conversation_id')
+            cts = m.get('created_at')
+            if not mid or not cid:
+                continue
+            with _PROC_LOCK:
+                if mid in _PROC_MSGS:
+                    continue
+            q_cts = urllib.parse.quote(cts) if cts else ''
+            _, replies = sb_request('GET', f'/rest/v1/messages?conversation_id=eq.{cid}&role=eq.assistant&created_at=gt.{q_cts}&limit=1', service=True)
+            if isinstance(replies, list) and len(replies) == 0:
+                log.info('🚀 [미처리 유저 메시지 감지] conv=%s: %s (자동 처리 시작)', cid[:8], (m.get('content') or '')[:50])
+                threading.Thread(target=handle_user_message, args=(m,), daemon=True).start()
+    except Exception as e:
+        log.warning('미처리 메시지 확인 예외: %s', e)
 
 def realtime_ws_url():
 

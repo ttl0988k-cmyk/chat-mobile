@@ -592,20 +592,16 @@
 
       });
 
-      if (error) console.error('send:', error);
-
-      else {
-
-      $('send-input').value = '';
-
-      sb.from('conversations')
-
-        .update({ updated_at: new Date().toISOString(), title: content.slice(0, 40) })
-
-        .eq('id', currentConversationId)
-
-        .then(() => {});
-
+      if (error) {
+        console.error('send:', error);
+        setWorkingState(false);
+        alert('메시지 전송 실패: ' + (error.message || JSON.stringify(error)));
+      } else {
+        $('send-input').value = '';
+        sb.from('conversations')
+          .update({ updated_at: new Date().toISOString(), title: content.slice(0, 40) })
+          .eq('id', currentConversationId)
+          .then(() => {});
       }
 
     } finally {
@@ -1421,6 +1417,17 @@
 
     if (txt || attachments.length) { sendMessage(txt, attachments); scrollBottom(true); }
 
+  });
+
+  $('send-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (typeof $('send-form').requestSubmit === 'function') {
+        $('send-form').requestSubmit();
+      } else {
+        $('send-btn').click();
+      }
+    }
   });
 
   // 파일 첨부
