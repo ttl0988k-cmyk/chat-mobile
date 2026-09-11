@@ -3,7 +3,14 @@
 'use strict';
 
   APP.sendMessage = async function sendMessage(text, attachments) {
-    // [FIX 2026-09-11] 더브탭/StrictMode/Enter+버튼 race 창단
+    // [FIX 2026-09-12] 대화가 아직 없으면 먼저 확보한다.
+    //   legacy(app.js L917)에는 sendMessage 진입 시 ensureConversation() 을 호출했는데
+    //   리팩토링 때 이 호출이 빠졌다. 그 결과 conv_id 가 null 이면 곧바로 return 되어
+    //   메시지를 보내도 아무 일도 일어나지 않았다(전송·렌더 전면 불능).
+    if (!APP.currentConversationId && typeof APP.ensureConversation === 'function') {
+      try { await APP.ensureConversation(); }
+      catch (e) { console.error('[sendMessage] ensureConversation 실패:', e); }
+    }
     if (!APP.currentConversationId) return;
 
     // 동원 한 conv에 대한 in-flight Promise 가드

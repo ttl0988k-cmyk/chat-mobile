@@ -68,6 +68,19 @@
     if (emailEl) emailEl.textContent = user.email || '';
     APP.showView('chat');
 
+    // 로그인 후 최근 대화 자동 로드 — 휴대폰에서 바로 이어서 보이도록
+    (async () => {
+      try {
+        if (typeof APP.ensureConversation === 'function') await APP.ensureConversation();
+        if (APP.currentConversationId) {
+          if (typeof APP.loadMessages === 'function') await APP.loadMessages();
+          if (typeof APP.subscribeMessages === 'function') APP.subscribeMessages();
+          const box = APP.$('conv-list');
+          if (box && typeof APP.loadConversationList === 'function') APP.loadConversationList();
+        }
+      } catch (e) { console.warn('[auth] 대화 로드 실패:', e); }
+    })();
+
     // 로그인 후 모델 목록 로드 (Supabase 실시간 목록 동기화 시작)
     try {
       if (typeof APP.loadModelList === 'function') APP.loadModelList();
