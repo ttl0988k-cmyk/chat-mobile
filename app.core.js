@@ -44,10 +44,12 @@ window.DAON_APP = window.DAON_APP || {};
 
 
 
-  function setWorkingState(working) {
+  // [FIX 2026-09-12] 모듈 분리 후 APP 에 노출되지 않아
+  //   호출부(app.chat.js 등)에서 'APP.setWorkingState is not a function' 이 발생했다.
+  APP.setWorkingState = function setWorkingState(working) {
     APP.isWorking = !!working;
-    const btn = $('send-btn');
-    const input = $('send-input');
+    const btn = APP.$('send-btn');
+    const input = APP.$('send-input');
     if (!btn) return;
     if (APP.isWorking) {
       btn.textContent = '⏹️ 중단';
