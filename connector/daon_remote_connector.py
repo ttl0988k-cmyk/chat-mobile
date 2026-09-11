@@ -1176,22 +1176,12 @@ def handle_user_message(msg):
     start = daon_start_chat(session_id, content, model=req_model or None)
 
     if not start:
-
-        # [FIX 2026-09-11] dedup: 이면 새로 만든 세션이 매핑에 있으면 재사용
-        # 동시 요청/타임아출 재시도로 두 번 INSERT 되는 버그 창단
-        existing_session = _CONV_SESSIONS.get(conv_id)
-
-        if existing_session:
-            log.info('재시작 감지 분글 — 매핑된 세션 재사용 (중복 생성 방지): conv=%s, session=%s', conv_id, existing_session)
-            session_id = existing_session
-        else:
-            log.info('기존 세션 만료 또는 DAON 재시작 감지 — 새 세션 자동 생성 후 재시도')
-            session_id = daon_new_session(model=req_model or None)
+        log.info('기존 세션(%s) 만료 또는 실패 감지 — 새 세션 자동 생성 후 재시도: conv=%s', session_id, conv_id)
+        _CONV_SESSIONS.pop(conv_id, None)
+        session_id = daon_new_session(model=req_model or None)
+        if session_id:
             _CONV_SESSIONS[conv_id] = session_id
             _save_conv_sessions()
-
-        if session_id:
-
             start = daon_start_chat(session_id, content, model=req_model or None)
 
     if not start:
