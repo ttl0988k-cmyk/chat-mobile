@@ -8,7 +8,9 @@
     const prevVal = sel.value || APP.selectedModel || localStorage.getItem('daon_selected_model') || '';
     sel.innerHTML = '<option value="">기본 모델</option>';
 
-    if (!groupsOrModels || groupsOrModels.length === 0) return;
+    // [FIX 2026-09-12] 배열이 아닌 값({}, 문자열 등)이 들어오면 for..of 에서
+    // TypeError 로 모델 목록 전체가 비어 보이므로 진입 자체를 차단한다.
+    if (!groupsOrModels || !Array.isArray(groupsOrModels) || groupsOrModels.length === 0) return;
 
     // 그룹 형식인지 평탄화된 형식인지 판별
     const isGroups = groupsOrModels[0] && Array.isArray(groupsOrModels[0].models);

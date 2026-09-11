@@ -1,4 +1,6 @@
 // app.auth.js - 9990 비밀번호 게이트 + view switching (2026-09-11 라온)
+// [FIX 2026-09-12] 로그인 직후 모델 목록 로드 추가 — init 중단(APP.APP 오타)과 별개로,
+//   세션 복원/익명 로그인 경로에서도 모델 목록이 즉시 채워지도록 보강.
 (function (APP) {
 'use strict';
 
@@ -30,13 +32,31 @@
   };
 
   APP.showView = function showView(name) {
-    Object.entries(APP.views).forEach(([k, el]) => el.classList.toggle('active', k === name));
+    Object.entries(APP.views).forEach(([k, el]) => el && el.classList.toggle('active', k === name));
   };
 
   APP.onSignedIn = function onSignedIn(user) {
     APP.currentUserId = user.id;
-    APP.$('user-email').textContent = user.email || '';
+    const emailEl = APP.$('user-email');
+    if (emailEl) emailEl.textContent = user.email || '';
     APP.showView('chat');
+
+    // [FIX 2026-09-12] 로그인 후 모델 목록 로드 — 이 호출이 없으면
+    // Supabase 실시간 목록 동기화가 시작되지 않아 모델이 비어 보인다.
+    try {
+      if (typeof APP.loadModelList === 'function') APP.loadModelList();
+    } catch (e) { console.warn('[auth] loadModelList 실패:', e); }
+
+    // 안전망: 그래도 비어 있으면 config.js 기준으로 채운다
+    setTimeout(() => {
+      const sel = APP.$('model-select');
+      if (sel && sel.options.length <= 1) {
+        try {
+          const g = window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.modelGroups;
+          if (g && g.length) APP.renderModelOptions(g);
+        } catch (e) {}
+      }
+    }, 900);
   };
 
 })(window.DAON_APP);
