@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0f172a">
   <title>다온 모바일 작업실</title>
-  <link rel="stylesheet" href="style.css?v=20260911_v2">
+  <link rel="stylesheet" href="style.css?v=20260911_refac">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,13 +61,19 @@
       <form id="send-form" class="composer">
         <input id="file-input" type="file" hidden multiple>
         <button id="attach-btn" class="ghost small" type="button" title="파일 첨부">📎</button>
-        <textarea id="send-input" placeholder="라온에게 보낼 작업 지시…" rows="2"></textarea>
+        <textarea id="send-input" placeholder="라온에게 보낼 작업 지시…" rows="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
         <button id="send-btn" class="primary" type="submit">전송</button>
       </form>
     </section>
   </div>
 
-  <script src="config.js?v=20260911_v2"></script>
-  <script src="app.js?v=20260911_v2"></script>
+  <script src="config.js?v=20260911_refac"></script>
+  <script src="app.core.js?v=20260911_refac"></script>
+  <script src="app.auth.js?v=20260911_refac"></script>
+  <script src="app.models.js?v=20260911_refac"></script>
+  <script src="app.conversations.js?v=20260911_refac"></script>
+  <script src="app.chat.js?v=20260911_refac"></script>
+  <script src="app.render.js?v=20260911_refac"></script>
+  <script src="app.init.js?v=20260911_refac"></script>
 </body>
 </html>
