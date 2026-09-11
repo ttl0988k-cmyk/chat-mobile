@@ -1,122 +1,36 @@
 // app.js — 다온 모바일 작업실 v3 (DAON Remote)
 
-
-
-
-
 // 양방향 프로토콜: prompt.submit / message.delta / message.complete
-
-
-
-
 
 //                  approval.request → approval_response / session.interrupt
 
-
-
-
-
 // v3: 대화 목록 전환 + 모델 선택
-
-
-
-
 
 (function () {
 
-
-
-
-
   'use strict';
-
-
-
-
-
-
-
-
-
-
 
   const { url, anonKey } = window.SUPABASE_CONFIG;
 
-
-
-
-
   const sb = window.supabase.createClient(url, anonKey);
-
-
-
-
-
-
-
-
-
-
 
   const $ = (id) => document.getElementById(id);
 
-
-
-
-
   const views = {
-
-
-
-
 
     auth: $('auth-view'),
 
-
-
-
-
     chat: $('chat-view'),
-
-
-
-
 
   };
 
-
-
-
-
-
-
-
-
-
-
   let currentConversationId = null;
-
-
-
-
 
   let currentUserId = null;
 
-
-
-
-
   let activeStreamId = null;   // 중단(interrupt)에 사용
 
-
-
-
-
   let activeSessionId = null;  // 승인 응답에 사용
-
-
-
-
 
   let selectedModel = '';      // 모바일에서 선택한 모델
   let isWorking = false;       // 작업 진행 중 플래그 (중단 모드 전환용)
@@ -141,283 +55,89 @@
     }
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   // 로그인/회원가입
 
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   async function login() {
 
-
-
-
-
     const email = $('auth-email').value.trim();
-
-
-
-
 
     const password = $('auth-password').value;
 
-
-
-
-
     $('auth-msg').textContent = '';
 
-
-
-
-
     if (!email || !password) { $('auth-msg').textContent = '이메일/비번 입력'; return; }
-
-
-
-
 
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
-
-
-
-
     if (error) { $('auth-msg').textContent = '로그인 실패: ' + error.message; return; }
-
-
-
-
 
     onSignedIn(data.user);
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   async function signup() {
 
-
-
-
-
     const email = $('auth-email').value.trim();
-
-
-
-
 
     const password = $('auth-password').value;
 
-
-
-
-
     $('auth-msg').textContent = '';
-
-
-
-
 
     if (!email || !password) { $('auth-msg').textContent = '이메일/비번 입력'; return; }
 
-
-
-
-
     const { data, error } = await sb.auth.signUp({ email, password });
-
-
-
-
 
     if (error) { $('auth-msg').textContent = '가입 실패: ' + error.message; return; }
 
-
-
-
-
     if (data.session) onSignedIn(data.user);
-
-
-
-
 
     else $('auth-msg').textContent = '가입 완료 — 이메일을 확인하세요.';
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   async function logout() {
 
-
-
-
-
     await sb.auth.signOut();
-
-
-
-
 
     currentConversationId = null;
 
-
-
-
-
     showView('auth');
-
-
-
-
 
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   // 화면 전환
 
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   function showView(name) {
 
-
-
-
-
     Object.entries(views).forEach(([k, el]) => el.classList.toggle('active', k === name));
-
-
-
-
 
   }
 
-
-
-
-
-
-
-
-
-
-
   function onSignedIn(user) {
-
-
-
-
 
     currentUserId = user.id;
 
-
-
-
-
     $('user-email').textContent = user.email;
-
-
-
-
 
     showView('chat');
 
-
-
-
-
     loadModelList();
-
-
-
-
 
     ensureConversation().then(() => {
 
-
-
       loadMessages();
-
-
 
       subscribeMessages();
 
-
-
     });
-
-
 
     // [v3] 폴링 루프: 3초마다 새 메시지 확인 (승인 요청 실시간 수신)
 
@@ -428,770 +148,354 @@
       }
     }, 3000);
 
-
-
-
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
-
-  // 모델 목록 (DAON 백엔드 /api/models)
-
-
-
-
-
+  // 모델 목록 (DAON 백엔드 /api/models 연동)
   // ─────────────────────────────────────────
-
-
-
-
-
-  async function loadModelList() {
-
-
-
-
-
-    try {
-
-
-
-
-
-      const sel = $('model-select');
-
-
-
-
-
-      sel.innerHTML = '<option value="">기본 모델</option>';
-
-
-
-
-
-      // config.js에 정의된 모델 목록 사용 (폰에서 DAON 서버 접근 불가)
-
-
-
-
-
-      const models = (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.models) || [];
-
-
-
-
-
-      let lastProvider = '';
-
-
-
-
-
-      for (const m of models) {
-
-
-
-
-
-        if (m.provider !== lastProvider) {
-
-
-
-
-
-          const optgroup = document.createElement('optgroup');
-
-
-
-
-
-          optgroup.label = m.provider;
-
-
-
-
-
-          sel.appendChild(optgroup);
-
-
-
-
-
-          lastProvider = m.provider;
-
-
-
-
-
+  function renderModelOptions(groupsOrModels) {
+    const sel = $('model-select');
+    if (!sel) return;
+    const prevVal = sel.value || selectedModel || localStorage.getItem('daon_selected_model') || '';
+    sel.innerHTML = '<option value="">기본 모델</option>';
+
+    if (!groupsOrModels || groupsOrModels.length === 0) return;
+
+    // 그룹 형식인지 평탄화된 형식인지 판별
+    const isGroups = groupsOrModels[0] && Array.isArray(groupsOrModels[0].models);
+
+    if (isGroups) {
+      for (const g of groupsOrModels) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = g.provider || '기타';
+        for (const m of (g.models || [])) {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = m.label || m.id;
+          if (m.type && m.type !== 'chat') {
+            opt.setAttribute('data-type', m.type);
+          }
+          optgroup.appendChild(opt);
         }
-
-
-
-
-
+        if (optgroup.children.length > 0) {
+          sel.appendChild(optgroup);
+        }
+      }
+    } else {
+      let lastProvider = '';
+      let currentGroup = null;
+      for (const m of groupsOrModels) {
+        const p = m.provider || '기타';
+        if (p !== lastProvider || !currentGroup) {
+          currentGroup = document.createElement('optgroup');
+          currentGroup.label = p;
+          sel.appendChild(currentGroup);
+          lastProvider = p;
+        }
         const opt = document.createElement('option');
-
-
-
-
-
         opt.value = m.id;
-
-
-
-
-
-        opt.textContent = m.id;
-
-
-
-
-
-        sel.lastChild.appendChild(opt);
-
-
-
-
-
+        opt.textContent = m.label || m.id;
+        if (m.type && m.type !== 'chat') {
+          opt.setAttribute('data-type', m.type);
+        }
+        currentGroup.appendChild(opt);
       }
-
-
-
-
-
-      // localStorage에 저장된 선택 복원
-
-
-
-
-
-      const saved = localStorage.getItem('daon_selected_model');
-
-
-
-
-
-      if (saved && Array.from(sel.options).some(o => o.value === saved)) {
-
-
-
-
-
-        sel.value = saved;
-
-
-
-
-
-        selectedModel = saved;
-
-
-
-
-
-      }
-
-
-
-
-
-    } catch (e) {
-
-
-
-
-
-      console.error('모델 목록 로드 실패:', e);
-
-
-
-
-
     }
 
-
-
-
-
+    // 선택 상태 복원
+    if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
+      sel.value = prevVal;
+      selectedModel = prevVal;
+    } else {
+      sel.value = '';
+      selectedModel = '';
+    }
   }
 
+  let _modelSyncSubscribed = false;
 
+  async function loadModelList() {
+    try {
+      // 1단계: config.js 또는 localStorage 캐시로 즉각 렌더링 (지연/깜빡임 방지)
+      let initialData = null;
+      try {
+        const cached = localStorage.getItem('daon_cached_models');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          initialData = parsed.groups || parsed.models || parsed;
+        }
+      } catch (_) {}
 
+      if (!initialData && window.SUPABASE_CONFIG) {
+        initialData = window.SUPABASE_CONFIG.modelGroups || window.SUPABASE_CONFIG.models || [];
+      }
 
+      if (initialData) {
+        renderModelOptions(initialData);
+      }
 
+      // 2단계: 로그인 사용자 대상 Supabase agent_memory 에서 실시간 동기화된 최신 모델 목록 가져오기
+      if (currentUserId) {
+        const { data, error } = await sb
+          .from('agent_memory')
+          .select('content, metadata, updated_at')
+          .eq('user_id', currentUserId)
+          .eq('key', 'available_models')
+          .order('updated_at', { ascending: false })
+          .limit(1);
 
+        if (!error && data && data.length > 0 && data[0].content) {
+          try {
+            const parsed = JSON.parse(data[0].content);
+            const liveGroups = parsed.groups || parsed.models;
+            if (liveGroups && liveGroups.length > 0) {
+              renderModelOptions(liveGroups);
+              localStorage.setItem('daon_cached_models', data[0].content);
+            }
+          } catch (parseErr) {
+            console.warn('[loadModelList] Supabase 모델 파싱 실패:', parseErr);
+          }
+        }
 
+        // 3단계: Supabase Realtime 실시간 변경 감지 구독 (최초 1회)
+        subscribeModelSync();
+      }
+    } catch (e) {
+      console.error('모델 목록 로드 실패:', e);
+    }
+  }
 
-
-
+  function subscribeModelSync() {
+    if (_modelSyncSubscribed || !currentUserId) return;
+    _modelSyncSubscribed = true;
+    try {
+      sb.channel('realtime-available-models')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'agent_memory',
+            filter: `user_id=eq.${currentUserId}`
+          },
+          (payload) => {
+            const rec = payload.new || {};
+            if (rec.key === 'available_models' && rec.content) {
+              try {
+                const parsed = JSON.parse(rec.content);
+                const liveGroups = parsed.groups || parsed.models;
+                if (liveGroups && liveGroups.length > 0) {
+                  renderModelOptions(liveGroups);
+                  localStorage.setItem('daon_cached_models', rec.content);
+                  console.log('🔄 [Realtime] DAON 프로바이더 모델 실시간 동기화 완료');
+                }
+              } catch (_) {}
+            }
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      console.warn('[subscribeModelSync] Realtime 구독 실패:', e);
+    }
+  }
 
   function onModelChange() {
 
-
-
-
-
     selectedModel = $('model-select').value;
-
-
-
-
 
     try { localStorage.setItem('daon_selected_model', selectedModel); } catch (_) {}
 
-
-
-
-
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   // 대화 목록
 
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   async function loadConversationList() {
 
-
-
-
-
     if (!currentUserId) return;
-
-
-
-
 
     const { data, error } = await sb
 
-
-
-
-
       .from('conversations')
-
-
-
-
 
       .select('id, title, updated_at, created_at')
 
-
-
-
-
       .eq('user_id', currentUserId)
-
-
-
-
 
       .order('updated_at', { ascending: false })
 
-
-
-
-
       .limit(50);
-
-
-
-
 
     if (error) { console.error('conv list:', error); return; }
 
-
-
-
-
     const box = $('conv-list');
-
-
-
-
 
     box.innerHTML = '';
 
-
-
-
-
     if (!data || data.length === 0) {
-
-
-
-
 
       box.innerHTML = '<div class="conv-empty">대화가 없습니다</div>';
 
-
-
-
-
       return;
 
-
-
-
-
     }
-
-
-
-
 
     for (const c of data) {
 
-
-
-
-
       const el = document.createElement('div');
-
-
-
-
 
       el.className = 'conv-item' + (c.id === currentConversationId ? ' active' : '');
 
-
-
-
-
       // 첫 메시지로 제목 대체 시도 (가벼운 조회)
-
-
-
-
 
       let title = c.title || '대화';
 
-
-
-
-
       if (title === '새 작업') title = '대화 ' + (c.created_at || '').slice(0, 10);
-
-
-
-
 
       const time = (c.updated_at || '').slice(0, 16).replace('T', ' ');
 
-
-
-
-
       el.innerHTML = '<div class="conv-title">' + escHtml(title) + '</div><div class="conv-time">' + escHtml(time) + '</div>';
-
-
-
-
 
       el.onclick = () => switchConversation(c.id);
 
-
-
-
-
       box.appendChild(el);
-
-
-
-
 
     }
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   function escHtml(s) {
 
-
-
-
-
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-
-
-
-
   }
-
-
-
-
 
   // [v3] 안전 리치 렌더 — 링크 클릭 지원 (escHtml 선행으로 XSS 안전)
 
-
   function renderRichContent(el, text) {
-
 
     let s = escHtml(text || '');
 
-
     // 마크다운 링크 [text](url) 또는 URL 자동 감지 → <a>
-
 
     s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s<)]+)\)|((?:https?:\/\/)[^\s<)]+)/g, function (m, mt, mu, bu) {
 
-
       if (mt !== undefined && mu !== undefined) return '<a href="' + mu + '" target="_blank" rel="noopener">' + mt + '</a>';
-
 
       if (bu) return '<a href="' + bu + '" target="_blank" rel="noopener">' + bu + '</a>';
 
-
       return m;
-
 
     });
 
-
     el.innerHTML = s.replace(/\n/g, '<br>');
 
-
   }
-
-
-
-
 
   // [v3] 상태 배지 (💭 생각중… / 🔧 작업중…)
 
-
   function renderStatusBadge(row) {
-
 
     let el = row.id ? document.querySelector('.msg-row[data-msg-id="' + row.id + '"]') : null;
 
-
     if (!el) {
-
 
       el = document.createElement('div');
 
-
       el.className = 'msg-row tool';
-
 
       if (row.id) el.dataset.msgId = String(row.id);
 
-
       const badge = document.createElement('div');
-
 
       badge.className = 'status-badge';
 
-
       badge.textContent = row.content || '💭 생각중…';
-
 
       el.appendChild(badge);
 
-
       $('messages').appendChild(el);
-
 
     } else {
 
-
       const badge = el.querySelector('.status-badge');
-
 
       if (badge) badge.textContent = row.content || '';
 
-
     }
-
 
     scrollBottom();
 
-
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   function toggleConvPanel(show) {
 
-
-
-
-
     const panel = $('conv-list-panel');
-
-
-
-
 
     const force = show !== undefined ? show : panel.style.display === 'none';
 
-
-
-
-
     panel.style.display = force ? 'flex' : 'none';
-
-
-
-
 
     if (force) loadConversationList();
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   async function switchConversation(convId) {
 
-
-
-
-
     currentConversationId = convId;
-
-
-
-
 
     activeStreamId = null;
 
-
-
-
-
     activeSessionId = null;
-
-
-
-
 
     pendingAssistantEl = null;
 
-
-
-
-
     toggleConvPanel(false);
-
-
-
-
 
     await loadMessages();
 
-
-
-
-
     subscribeMessages();
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   async function newConversation() {
 
-
-
-
-
     if (!currentUserId) return;
-
-
-
-
 
     const { data, error } = await sb
 
-
-
-
-
       .from('conversations')
-
-
-
-
 
       .insert({ user_id: currentUserId, device: 'mobile', title: '새 작업' })
 
-
-
-
-
       .select()
-
-
-
-
 
       .single();
 
-
-
-
-
     if (error) { console.error('conv create:', error); return; }
-
-
-
-
 
     currentConversationId = data.id;
 
-
-
-
-
     pendingAssistantEl = null;
-
-
-
-
 
     $('messages').innerHTML = '';
 
-
-
-
-
     toggleConvPanel(false);
-
-
-
-
 
     await loadMessages();
 
-
-
-
-
     subscribeMessages();
-
-
-
-
 
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   // 대화 세션 (1개)
 
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   async function ensureConversation() {
     // [FIX 2026-09-11] idempotent guard: 미리 설정된 conv_id 있으면 반병
@@ -1227,33 +531,11 @@
     await ensureConversation._inFlight;
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   // 메시지 송수신
 
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   async function sendMessage(text, attachments) {
     // [FIX 2026-09-11] 더브탭/StrictMode/Enter+버튼 race 창단
@@ -1280,714 +562,226 @@
 
     try {
 
-
-
-
-
       const meta = {};
-
-
-
-
 
       if (selectedModel) meta.model = selectedModel;  // 모델 선택 시 metadata에 전달
 
-
-
-
-
       if (attachments && attachments.length) {
-
-
-
-
 
       meta.attachments = attachments;
 
-
-
-
-
       meta.type = 'file';
 
-
-
-
-
       }
-
-
-
-
 
       const content = text || (attachments && attachments.length ? '📎 ' + attachments.map(a => a.name).join(', ') : '');
 
-
-
-
-
       if (!content) return;
-
-
-
-
 
       const { error } = await sb.from('messages').insert({
 
-
-
-
-
       conversation_id: currentConversationId,
-
-
-
-
 
       user_id: currentUserId,
 
-
-
-
-
       role: 'user',
-
-
-
-
 
       content: content,
 
-
-
-
-
       metadata: meta,
-
-
-
-
 
       });
 
-
-
-
-
       if (error) console.error('send:', error);
-
-
-
-
 
       else {
 
-
-
-
-
       $('send-input').value = '';
-
-
-
-
 
       sb.from('conversations')
 
-
-
-
-
         .update({ updated_at: new Date().toISOString(), title: content.slice(0, 40) })
-
-
-
-
 
         .eq('id', currentConversationId)
 
-
-
-
-
         .then(() => {});
 
-
-
-
-
       }
-
-
-
-
 
     } finally {
       sendMessage._inFlight = false;
     }
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   // 파일 첨부/업로드 (chat-files 버킷, RLS: metadata.user_id 필수)
 
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   let pendingFiles = [];  // 전송 대기 중인 선택 파일
 
-
-
-
-
-
-
-
-
-
-
   function onAttachClick() { $('file-input').click(); }
-
-
-
-
-
-
-
-
-
-
 
   function onFileSelect(e) {
 
-
-
-
-
     const files = Array.from(e.target.files || []);
-
-
-
-
 
     if (!files.length) return;
 
-
-
-
-
     pendingFiles = pendingFiles.concat(files);
-
-
-
-
 
     updateAttachPreview();
 
-
-
-
-
     e.target.value = '';
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   function updateAttachPreview() {
 
-
-
-
-
     let bar = $('attach-preview');
-
-
-
-
 
     if (!bar) {
 
-
-
-
-
       bar = document.createElement('div');
-
-
-
-
 
       bar.id = 'attach-preview';
 
-
-
-
-
       $('send-form').insertBefore(bar, $('file-input'));
 
-
-
-
-
     }
-
-
-
-
 
     if (!pendingFiles.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
 
-
-
-
-
     bar.style.display = 'flex';
-
-
-
-
 
     bar.innerHTML = pendingFiles.map((f, i) =>
 
-
-
-
-
       '<span class="attach-chip">' + escHtml(f.name).slice(0, 24) +
-
-
-
-
 
       ' <button type="button" data-i="' + i + '" class="attach-rm">✕</button></span>'
 
-
-
-
-
     ).join('');
-
-
-
-
 
     bar.querySelectorAll('.attach-rm').forEach(btn => {
 
-
-
-
-
       btn.onclick = () => { pendingFiles.splice(+btn.dataset.i, 1); updateAttachPreview(); };
-
-
-
-
 
     });
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   async function uploadFiles(files) {
 
-
-
-
-
     const uploaded = [];
-
-
-
-
 
     for (const f of files) {
 
-
-
-
-
       const safeName = f.name.replace(/[^\w가-힣.\-() ]/g, '_').slice(-80);
-
-
-
-
 
       const path = currentUserId + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '_' + safeName;
 
-
-
-
-
       const { error } = await sb.storage.from('chat-files').upload(path, f, {
-
-
-
-
 
         contentType: f.type || 'application/octet-stream',
 
-
-
-
-
         metadata: { user_id: currentUserId },  // RLS: metadata->>'user_id' = auth.uid()
 
-
-
-
-
       });
-
-
-
-
 
       if (error) throw error;
 
-
-
-
-
       uploaded.push({
-
-
-
-
 
         bucket: 'chat-files',
 
-
-
-
-
         path: path,
-
-
-
-
 
         name: f.name,
 
-
-
-
-
         mime: f.type || 'application/octet-stream',
-
-
-
-
 
         size: f.size,
 
-
-
-
-
       });
 
-
-
-
-
     }
-
-
-
-
 
     return uploaded;
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   function renderAttachments(wrap, attachments) {
 
-
-
-
-
     for (const a of attachments) {
-
-
-
-
 
       const isImg = /^image\//.test(a.mime || '');
 
-
-
-
-
       if (isImg) {
-
-
-
-
 
         const img = document.createElement('img');
 
-
-
-
-
         img.className = 'attach-img';
-
-
-
-
 
         img.alt = a.name;
 
-
-
-
-
         img.onclick = () => { if (img.src) window.open(img.src, '_blank'); };
-
-
-
-
 
         wrap.appendChild(img);
 
-
-
-
-
         sb.storage.from(a.bucket || 'chat-files').createSignedUrl(a.path, 86400)
-
-
-
-
 
           .then(({ data }) => { if (data) img.src = data.signedUrl; })
 
-
-
-
-
           .catch(() => {});
-
-
-
-
 
       } else {
 
-
-
-
-
         const link = document.createElement('a');
-
-
-
-
 
         link.className = 'attach-file';
 
-
-
-
-
         link.textContent = '📄 ' + a.name;
-
-
-
-
 
         link.target = '_blank';
 
-
-
-
-
         wrap.appendChild(link);
-
-
-
-
 
         sb.storage.from(a.bucket || 'chat-files').createSignedUrl(a.path, 86400)
 
-
-
-
-
           .then(({ data }) => { if (data) link.href = data.signedUrl; })
-
-
-
-
 
           .catch(() => {});
 
-
-
-
-
       }
-
-
-
-
 
     }
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   // 승인 응답 보내기 (approval.respond)
 
-
-
-
-
   async function sendApproval(approved, sessionId, reason) {
-
-
-
-
 
     if (!currentConversationId) return;
 
-
-
-
-
     await sb.from('messages').insert({
-
-
-
-
 
       conversation_id: currentConversationId,
 
-
-
-
-
       user_id: currentUserId,
-
-
-
-
 
       role: 'system',
 
-
-
-
-
       content: approved ? '✅ 승인함' : '❌ 거절함',
-
-
-
-
 
       metadata: { type: 'approval_response', approved: approved, session_id: sessionId, reason: reason || '' },
 
-
-
-
-
     });
-
-
-
-
 
   }
 
-
-
-
-
-
-
-
-
-
-
   // 작업 중단 보내기 (session.interrupt)
-
-
-
-
 
   async function sendInterrupt() {
     if (!currentConversationId) return;
@@ -2004,468 +798,187 @@
     });
   }
 
-
-
-
-
-
-
-
-
-
-
   // 자율 실행 토글 (커넥터가 승인 요청 자동 처리)
-
 
   let autoMode = false;
 
-
   function updateAutoBtn() {
-
 
     const b = document.getElementById('auto-btn');
 
-
     if (!b) return;
-
 
     b.textContent = autoMode ? '🤖' : '🛡️';
 
-
     b.classList.toggle('auto-on', autoMode);
-
 
     b.title = autoMode ? '자율 실행 ON (승인 자동 처리) — 클릭 시 일반 실행' : '일반 실행 — 클릭 시 자율 실행(승인 자동 처리)';
 
-
   }
-
 
   async function sendAutonomousToggle() {
 
-
     if (!currentConversationId) return;
-
 
     autoMode = !autoMode;
 
-
     updateAutoBtn();
-
 
     await sb.from('messages').insert({
 
-
       conversation_id: currentConversationId,
-
 
       user_id: currentUserId,
 
-
       role: 'system',
-
 
       content: autoMode ? '🤖 자율 실행 켬' : '🛡️ 자율 실행 끔',
 
-
       metadata: { type: 'autonomous_toggle', enabled: autoMode },
-
 
     });
 
-
   }
 
-
-
-
-
   // ─────────────────────────────────────────
-
 
   // 채팅 삭제 (확인 팝업 → messages + conversation 삭제)
 
-
   // ─────────────────────────────────────────
-
-
-
-
 
   function confirmClearChat() {
 
-
-
-
-
     if (document.querySelector('.confirm-overlay')) return;
-
-
-
-
 
     const overlay = document.createElement('div');
 
-
-
-
-
     overlay.className = 'confirm-overlay';
-
-
-
-
 
     overlay.innerHTML =
 
-
-
-
-
       '<div class="confirm-box">' +
-
-
-
-
 
       '<div class="confirm-title">🗑️ 채팅을 삭제할까요?</div>' +
 
-
-
-
-
       '<div class="confirm-text">이 대화의 모든 메시지가 삭제되고,<br>새 대화로 시작됩니다.</div>' +
-
-
-
-
 
       '<div class="confirm-actions">' +
 
-
-
-
-
       '<button class="ghost" id="confirm-no">취소</button>' +
-
-
-
-
 
       '<button class="primary" id="confirm-yes" style="background:var(--danger);">삭제</button>' +
 
-
-
-
-
       '</div>' +
-
-
-
-
 
       '</div>';
 
-
-
-
-
     document.body.appendChild(overlay);
-
-
-
-
 
     overlay.querySelector('#confirm-no').onclick = () => overlay.remove();
 
-
-
-
-
     overlay.querySelector('#confirm-yes').onclick = async () => {
-
-
-
-
 
       overlay.remove();
 
-
-
-
-
       await clearChat();
-
-
-
-
 
     };
 
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   async function clearChat() {
 
-
-
-
-
     if (!currentConversationId) return;
-
-
-
-
 
     const convId = currentConversationId;
 
-
-
-
-
     const { error: msgErr } = await sb
-
-
-
-
 
       .from('messages')
 
-
-
-
-
       .delete()
-
-
-
-
 
       .eq('conversation_id', convId)
 
-
-
-
-
       .eq('user_id', currentUserId);
-
-
-
-
 
     if (msgErr) { console.error('clear messages:', msgErr); alert('삭제 실패: ' + msgErr.message); return; }
 
-
-
-
-
     await sb.from('conversations').delete().eq('id', convId).eq('user_id', currentUserId);
-
-
-
-
 
     currentConversationId = null;
 
-
-
-
-
     activeStreamId = null;
-
-
-
-
 
     activeSessionId = null;
 
-
-
-
-
     pendingAssistantEl = null;
-
-
-
-
 
     $('messages').innerHTML = '';
 
-
-
-
-
     $('send-input').value = '';
-
-
-
-
 
     await ensureConversation();
 
-
-
-
-
     await loadMessages();
-
-
-
-
 
     $('messages').innerHTML = '<div class="meta" style="text-align:center;padding:24px;">새 대화를 시작하세요 ✨</div>';
 
-
-
-
-
     subscribeMessages();
-
-
-
-
 
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   // 메시지 렌더링 (delta 누적 + 승인 버튼)
 
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   let pendingAssistantEl = null;  // delta 누적 중인 말풍선
 
-
-
-
-
   function createToolBadge(row) {
-
 
     const meta = row.metadata || {};
 
-
     const name = meta.name || '도구';
-
 
     const event = meta.event || '';
 
-
     const content = (row.content || '').trim();
-
-
-
-
 
     const el = document.createElement('div');
 
-
     el.className = 'msg-row tool';
-
 
     if (row.id) el.dataset.msgId = String(row.id);
 
-
-
-
-
     const details = document.createElement('details');
-
 
     details.className = 'tool-details';
 
-
-
-
-
     const summary = document.createElement('summary');
-
 
     summary.className = 'tool-summary';
 
-
     summary.innerHTML = `<span class="tool-icon">⚙️</span> <span class="tool-name">${escHtml(name)}</span> <span class="tool-event">${escHtml(event)}</span>`;
-
-
-
-
 
     const body = document.createElement('pre');
 
-
     body.className = 'tool-content';
-
 
     body.textContent = content;
 
-
-
-
-
     details.appendChild(summary);
-
 
     details.appendChild(body);
 
-
     el.appendChild(details);
-
 
     $('messages').appendChild(el);
 
-
     return el;
 
-
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   function renderMessage(row) {
     // 현재 대화 소속 메시지만 렌더링 (다른 대화의 realtime INSERT 유입 차단)
@@ -2593,39 +1106,25 @@
 
   function createBubble(role, text, isTool, msgId) {
 
-
     const el = document.createElement('div');
-
 
     el.className = 'msg-row ' + role;
 
-
     if (msgId) el.dataset.msgId = String(msgId);
-
 
     const bubble = document.createElement('div');
 
-
     bubble.className = 'bubble';
-
 
     if (isTool) { bubble.textContent = text; } else { renderRichContent(bubble, text || ''); }
 
-
     el.appendChild(bubble);
-
 
     $('messages').appendChild(el);
 
-
     return el;
 
-
   }
-
-
-
-
 
   function onMessageUpdated(row) {
     if (row.conversation_id && row.conversation_id !== currentConversationId) return;
@@ -2677,16 +1176,6 @@
       box.scrollTop = box.scrollHeight;
     }
   }
-
-
-
-
-
-
-
-
-
-
 
   async function loadMessages(forceScroll = false) {
     if (!currentConversationId) return;
@@ -2808,221 +1297,94 @@
 
   let messagesChannel = null;  // 현재 구독 채널 (전환 시 이전 채널 해제용)
 
-
-
-
-
-
-
-
-
-
-
   function subscribeMessages() {
-
-
-
-
 
     if (!currentConversationId) return;
 
-
-
-
-
     // 이전 대화 채널 해제 — 안 끊으면 이전 대화 응답이 새 화면에 계속 렌더링됨
-
-
-
-
 
     if (messagesChannel) {
 
-
-
-
-
       try { sb.removeChannel(messagesChannel); } catch (_) {}
-
-
-
-
 
       messagesChannel = null;
 
-
-
-
-
     }
-
-
-
-
 
     messagesChannel = sb.channel('msgs-' + currentConversationId)
 
-
       .on(
-
 
         'postgres_changes',
 
-
         { event: '*', schema: 'public', table: 'messages', filter: 'conversation_id=eq.' + currentConversationId },
-
 
         (payload) => {
 
-
           if (payload.eventType === 'INSERT') {
-
 
             renderMessage(payload.new);
 
-
           } else if (payload.eventType === 'UPDATE') {
-
 
             onMessageUpdated(payload.new);
 
-
           } else if (payload.eventType === 'DELETE') {
-
 
             // [v3] 상태 배지 row 삭제 → 화면에서도 제거
 
-
             const delId = payload.old && payload.old.id;
-
 
             if (delId) {
 
-
               const delEl = document.querySelector('.msg-row[data-msg-id="' + delId + '"]');
-
 
               if (delEl) delEl.remove();
             }
             setWorkingState(false);
 
-
           }
-
 
         }
 
-
       )
-
 
       .subscribe();
 
-
-
-
-
   }
 
-
-
-
-
-
-
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   // 이벤트
 
-
-
-
-
   // ─────────────────────────────────────────
-
-
-
-
 
   $('auth-login').addEventListener('click', login);
 
-
-
-
-
   $('auth-signup').addEventListener('click', signup);
-
-
-
-
 
   $('logout-btn').addEventListener('click', logout);
 
-
-
-
-
   $('interrupt-btn').addEventListener('click', sendInterrupt);
-
-
-
-
 
   const _autoBtn = document.getElementById('auto-btn');
 
-
-
-
-
   if (_autoBtn) _autoBtn.addEventListener('click', sendAutonomousToggle);
-
-
-
-
 
   $('clear-btn').addEventListener('click', confirmClearChat);
 
-
-
-
-
   $('model-select').addEventListener('change', onModelChange);
-
-
-
+  // 초기 모델 목록 즉시 로드 (config.js / 캐시 기준)
+  loadModelList();
 
 
   $('conv-list-btn').addEventListener('click', () => toggleConvPanel());
 
-
-
-
-
   $('conv-close-btn').addEventListener('click', () => toggleConvPanel(false));
-
-
-
-
 
   $('conv-new-btn').addEventListener('click', newConversation);
 
-
-
-
-
   $('send-form').addEventListener('submit', async (e) => {
-
-
-
-
 
     e.preventDefault();
     if (isWorking) {
@@ -3031,175 +1393,55 @@
     }
     const txt = $('send-input').value.trim();
 
-
-
-
-
     if (!txt && !pendingFiles.length) return;
-
-
-
-
 
     let attachments = [];
 
-
-
-
-
     if (pendingFiles.length) {
-
-
-
-
 
       try {
 
-
-
-
-
         attachments = await uploadFiles(pendingFiles);
-
-
-
-
 
       } catch (err) {
 
-
-
-
-
         console.error('upload:', err);
-
-
-
-
 
         alert('파일 업로드 실패: ' + (err.message || err));
 
-
-
-
-
         return;
-
-
-
-
 
       }
 
-
-
-
-
       pendingFiles = [];
-
-
-
-
 
       updateAttachPreview();
 
-
-
-
-
     }
-
-
-
-
 
     if (txt || attachments.length) { sendMessage(txt, attachments); scrollBottom(true); }
 
-
-
-
-
   });
-
-
-
-
-
-
-
-
-
-
 
   // 파일 첨부
 
-
-
-
-
   $('attach-btn').addEventListener('click', onAttachClick);
-
-
-
-
 
   $('file-input').addEventListener('change', onFileSelect);
 
-
-
-
-
-
-
-
-
-
-
   // 자동 로그인 확인
-
-
-
-
 
   sb.auth.getSession().then(({ data }) => {
 
-
-
-
-
     if (data.session) onSignedIn(data.session.user);
 
-
-
-
-
   });
-
-
-
-
 
   sb.auth.onAuthStateChange((_event, session) => {
 
-
-
-
-
     if (session && !currentUserId) onSignedIn(session.user);
-
-
-
-
 
   });
 
-
-
-
-
 })();
-
-
-
-
 

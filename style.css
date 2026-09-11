@@ -123,10 +123,33 @@ button.danger:hover { color: #fca5a5; background: rgba(239,68,68,0.1); }
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 4px 6px;
+  padding: 5px 8px;
   font-size: 12px;
-  max-width: 120px;
+  font-weight: 500;
+  max-width: 135px;
+  text-overflow: ellipsis;
   font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.model-select:focus,
+.model-select:hover {
+  border-color: var(--primary, #3b82f6);
+}
+.model-select optgroup {
+  background: var(--surface);
+  color: var(--text-muted, #94a3b8);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.model-select option {
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: normal;
+  padding: 4px;
 }
 
 /* ── 대화 목록 패널 ── */
