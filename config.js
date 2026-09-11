@@ -1,5 +1,8 @@
 // config.js — 채팅 UI가 사용하는 공개 설정 (브라우저에 노출됨)
 // ⚠️ service_role/secret 키는 절대 여기에 넣지 마세요. publishable(anon) key만 사용.
+// 앱 접근 비밀번호 (아카이브와 동일 — 2026-09-11 라온)
+window.APP_PASSWORD = '9990';
+
 window.SUPABASE_CONFIG = {
   url: 'https://gfpsahhfllozfqczyoza.supabase.co',
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmcHNhaGhmbGxvemZxY3p5b3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MjM4MTcsImV4cCI6MjEwMjA5OTgxN30.Wha6rimow-cDWO3ek2hMWrSBoonp7Tl7FDgFRVoymC0',

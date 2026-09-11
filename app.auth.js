@@ -1,84 +1,42 @@
-// app.auth.js - auth/signin + view switching
+// app.auth.js - 9990 비밀번호 게이트 + view switching (2026-09-11 라온)
 (function (APP) {
 'use strict';
 
   APP.login = async function login() {
-
-    const email = APP.$('auth-email').value.trim();
-
-    const password = APP.$('auth-password').value;
-
+    const pw = APP.$('auth-password').value;
     APP.$('auth-msg').textContent = '';
+    if (pw !== window.APP_PASSWORD) {
+      APP.$('auth-msg').textContent = '비밀번호가 틀렸습니다.';
+      return;
+    }
+    // 기존 supabase 세션 있으면 재사용, 없으면 익명 로그인 시도
+    const { data: sess } = await APP.sb.auth.getSession();
+    if (sess && sess.session) { APP.onSignedIn(sess.session.user); return; }
 
-    if (!email || !password) { APP.$('auth-msg').textContent = '이메일/비번 입력'; return; }
+    // 익명 세션 (supabase anon sign-in) — 프로젝트에서 익명 로그인 비활성이어도 local-only 게이트로 통과
+    try {
+      const { data, error } = await APP.sb.auth.signInAnonymously();
+      if (!error && data && data.user) { APP.onSignedIn(data.user); return; }
+    } catch (e) { /* fallthrough */ }
 
-    const { data, error } = await APP.sb.auth.signInWithPassword({ email, password });
-
-    if (error) { APP.$('auth-msg').textContent = '로그인 실패: ' + error.message; return; }
-
-    APP.onSignedIn(data.user);
-
+    // local-only 유저 폴백 (DB user_id 없이도 대화 동작 가능하게 하기 위해 고정 ID 사용)
+    APP.onSignedIn({ id: 'local-user', email: 'daon@local' });
   };
-  APP.signup = async function signup() {
 
-    const email = APP.$('auth-email').value.trim();
-
-    const password = APP.$('auth-password').value;
-
-    APP.$('auth-msg').textContent = '';
-
-    if (!email || !password) { APP.$('auth-msg').textContent = '이메일/비번 입력'; return; }
-
-    const { data, error } = await APP.sb.auth.signUp({ email, password });
-
-    if (error) { APP.$('auth-msg').textContent = '가입 실패: ' + error.message; return; }
-
-    if (data.session) APP.onSignedIn(data.user);
-
-    else APP.$('auth-msg').textContent = '가입 완료 — 이메일을 확인하세요.';
-
-  };
   APP.logout = async function logout() {
-
-    await APP.sb.auth.signOut();
-
+    try { await APP.sb.auth.signOut(); } catch (e) {}
     APP.currentConversationId = null;
-
     APP.showView('auth');
-
   };
+
   APP.showView = function showView(name) {
-
     Object.entries(APP.views).forEach(([k, el]) => el.classList.toggle('active', k === name));
-
   };
+
   APP.onSignedIn = function onSignedIn(user) {
-
     APP.currentUserId = user.id;
-
-    APP.$('user-email').textContent = user.email;
-
+    APP.$('user-email').textContent = user.email || '';
     APP.showView('chat');
-
-    APP.loadModelList();
-
-    APP.ensureConversation().then(() => {
-
-      APP.loadMessages();
-
-      APP.subscribeMessages();
-
-    });
-
-    // [v3] 폴링 루프: 3초마다 새 메시지 확인 (승인 요청 실시간 수신)
-
-    // [v4] 부드러운 백그라운드 동기화 (DOM innerHTML 초기화 없이 새 메시지만 갱신)
-    setInterval(() => {
-      if (APP.currentConversationId && document.visibilityState !== 'hidden') {
-        APP.syncMessagesBackground();
-      }
-    }, 3000);
-
   };
-})(window.DAON_APP);
 
+})(window.DAON_APP);

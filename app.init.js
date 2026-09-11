@@ -9,11 +9,10 @@
 
   // ─────────────────────────────────────────
 
-  APP.$('auth-APP.login').addEventListener('click', APP.login);
+  APP.$('auth-login').addEventListener('click', APP.login);
 
-  APP.$('auth-APP.signup').addEventListener('click', APP.signup);
 
-  APP.$('APP.logout-btn').addEventListener('click', APP.logout);
+  APP.$('logout-btn').addEventListener('click', APP.logout);
 
   APP.$('interrupt-btn').addEventListener('click', APP.sendInterrupt);
 
