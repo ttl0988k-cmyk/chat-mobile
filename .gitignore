@@ -24,3 +24,6 @@ connector/legacy/
 .env*
 config.js
 !config.template.js
+launcher_hidden.log
+live_models.json
+*.clobbered-by-connector-*
