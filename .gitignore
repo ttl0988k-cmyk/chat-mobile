@@ -20,3 +20,7 @@ supabase/.env
 _tmp*
 tools/
 connector/legacy/
+.vercel
+.env*
+config.js
+!config.template.js
