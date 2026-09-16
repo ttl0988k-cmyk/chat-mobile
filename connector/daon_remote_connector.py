@@ -125,7 +125,76 @@ def load_env(path: str):
 
     return env
 
-ENV = load_env(r'C:\daon\.env')
+def _locate_env_file():
+
+    """[지인 배포 이식성] .env 를 커넥터 폴더에서 위로 올라가며 찾는다.
+
+    우선순위:
+
+      1) 이 스크립트가 있는 폴더의 .env          <- 배포판 기본 위치
+
+      2) 상위 폴더들의 .env (최대 5단계)
+
+      3) 이전 개발 레이아웃(C:\\daon\\.env)      <- 기존 사용자 호환
+
+    """
+
+    here = Path(__file__).resolve().parent
+
+    candidates = [here / '.env']
+
+    cur = here
+
+    for _ in range(5):
+
+        try:
+
+            cur = cur.parent
+
+        except Exception:
+
+            break
+
+        candidates.append(cur / '.env')
+
+    candidates.append(Path(r'C:\\daon\\.env'))
+
+    for c in candidates:
+
+        try:
+
+            if c.is_file():
+
+                return str(c)
+
+        except Exception:
+
+            continue
+
+    return str(here / '.env')   # 없으면 폴더 옆 경로(오류 메시지용)
+
+_ENV_PATH = _locate_env_file()
+
+ENV = load_env(_ENV_PATH)
+
+if not ENV.get('SUPABASE_URL'):
+
+    print('=' * 62)
+
+    print('[설정 오류] Supabase 설정을 찾지 못했습니다.')
+
+    print('  찾은 경로: ' + _ENV_PATH)
+
+    print('  커넥터 폴더에 .env 파일을 만들고 아래 3줄을 채워주세요:')
+
+    print('    SUPABASE_URL=https://<프로젝트>.supabase.co')
+
+    print('    SUPABASE_ANON_KEY=<anon 키>')
+
+    print('    SUPABASE_SERVICE_ROLE_KEY=<service_role 키>')
+
+    print('=' * 62)
+
 
 SUPABASE_URL = ENV.get('SUPABASE_URL', '').rstrip('/')
 
@@ -531,6 +600,7 @@ def fetch_daon_models():
     # 2) 로컬 custom_providers.json 시도
     candidates = [
         Path(os.environ.get('LOCALAPPDATA', '')) / 'DAON Agent System' / 'data' / 'custom_providers.json',
+        Path(os.environ.get('LOCALAPPDATA', '')) / 'daon-agent-system' / 'data' / 'custom_providers.json',
         Path(r'C:\daon\Daon agent System\data\custom_providers.json'),
     ]
     for cp in candidates:
@@ -597,26 +667,28 @@ def sync_models_to_supabase_and_config():
     }
     content_json = json.dumps(content_dict, ensure_ascii=False)
 
-    # 1) mobile config.js 동기화
+    # 1) config.js 자동 갱신 — [FIX 2026-09-12] 폐기
+    #   ⚠️ 기존 구현은 config.js 전체를 DAON /api/models 결과로 '덮어쓰기' 했다.
+    #      그 결과 DAON 에 없는 프로바이더(예: DeepSeek)와 window.APP_PASSWORD 가
+    #      통째로 사라져 모바일 앱에서 모델 목록이 0개로 보이는 장애가 발생했다.
+    #      (2026-09-12 실제 발생: 50개 -> 46개, APP_PASSWORD 소실, 로그인 불가)
+    #   ▸ 이후 config.js 는 git/Vercel 로 관리한다.
+    #   ▸ 실시간 모델 동기화는 Supabase agent_memory(key=available_models) 경로를 그대로 사용한다.
+    #   ▸ 아래는 참고용 스냅샷만 남기며, config.js 는 절대 자동으로 덮어쓰지 않는다.
     try:
-        config_path = Path(__file__).resolve().parent.parent / 'config.js'
-        if config_path.exists():
-            cfg_text = (
-                "// config.js — 채팅 UI가 사용하는 공개 설정 (브라우저에 노출됨)\n"
-                "// ⚠️ service_role/secret 키는 절대 여기에 넣지 마세요. publishable(anon) key만 사용.\n"
-                "window.SUPABASE_CONFIG = {\n"
-                f"  url: '{SUPABASE_URL}',\n"
-                f"  anonKey: '{SUPABASE_ANON}',\n"
-                f"  defaultModel: '{default_model or 'MiniMax-M3'}',\n"
-                "  // 다온에이전트 시스템(DAON /api/models) 등록 프로바이더 모델 목록 (PC 커넥터 연동 시 실시간 동기화됨)\n"
-                f"  modelGroups: {json.dumps(clean_groups, ensure_ascii=False, indent=4)},\n"
-                f"  models: {json.dumps(flat_models, ensure_ascii=False, indent=4)}\n"
-                "};\n"
-            )
-            config_path.write_text(cfg_text, encoding='utf-8')
-            log.info('📝 config.js 모델 목록 자동 갱신 완료 (%d개 모델)', len(flat_models))
+        ref_path = Path(__file__).resolve().parent / 'live_models.json'
+        ref_path.write_text(
+            json.dumps({
+                'groups': clean_groups,
+                'models': flat_models,
+                'default_model': default_model or 'MiniMax-M3',
+                'updated_at': time.time(),
+            }, ensure_ascii=False, indent=2),
+            encoding='utf-8',
+        )
+        log.info('[SAFE] live_models.json 기록 완료 (%d개 모델) — config.js 는 보존됨', len(flat_models))
     except Exception as e:
-        log.warning('config.js 갱신 예외: %s', e)
+        log.warning('live_models.json 기록 예외: %s', e)
 
     # 2) Supabase Auth 사용자 조회 및 agent_memory upsert
     try:
@@ -1022,6 +1094,71 @@ def _mark_processed(msg_id):
 
         return True
 
+def _unmark_processed(msg_id):
+
+    '''[FIX 2026-09-14] 처리 실패 시 이력을 해제하여 자동 재시도를 허용한다.
+
+    기존에는 handle_user_message 진입 직후 이력이 등록되고 실패해도 그대로 남아
+    로그온 직후(DAON 서버 부팅 전) 들어온 메시지가 영구히 재시도되지 않았다.'''
+
+    if not msg_id:
+
+        return
+
+    with _PROC_LOCK:
+
+        _PROC_MSGS.discard(msg_id)
+
+        try:
+
+            _PROC_ORDER.remove(msg_id)
+
+        except ValueError:
+
+            pass
+
+
+def _post_error_message(conv_id, user_id, content, msg_id=None):
+
+    '''[FIX 2026-09-14] 오류 안내를 1개만 유지하고, 실패한 유저 메시지는 재시도 가능하게 해제한다.
+
+    - 재시도 이력 해제(_unmark_processed) → 다음 점검 주기에서 다시 시도된다
+    - 기존 오류 메시지가 있으면 PATCH 로 내용만 갱신 → 채팅창에 경고가 쌓이지 않는다'''
+
+    _unmark_processed(msg_id)
+
+    try:
+
+        _, existing = sb_request('GET', '/rest/v1/messages?conversation_id=eq.' + conv_id + '&role=eq.assistant&metadata->>type=eq.error&order=created_at.desc&limit=1', service=True)
+
+        if isinstance(existing, list) and existing:
+
+            eid = existing[0].get('id')
+
+            if eid:
+
+                queue_sb_request('PATCH', '/rest/v1/messages?id=eq.' + str(eid), {'content': content}, service=True)
+
+                return
+
+    except Exception as e:
+
+        log.debug('기존 오류 메시지 조회 실패(신규 생성으로 진행): %s', e)
+
+    queue_sb_request('POST', '/rest/v1/messages', {
+
+        'conversation_id': conv_id,
+
+        'user_id': user_id,
+
+        'role': 'assistant',
+
+        'content': content,
+
+        'metadata': {'type': 'error'},
+
+    }, service=True)
+
 # 대화별 직렬화 락 (동시 수신 시 세션 이중 생성 방지)
 
 _SESS_LOCKS = {}
@@ -1155,19 +1292,7 @@ def handle_user_message(msg):
 
             if not _CONV_SESSIONS.get(conv_id):
 
-                queue_sb_request('POST', '/rest/v1/messages', {
-
-                    'conversation_id': conv_id,
-
-                    'user_id': user_id,
-
-                    'role': 'assistant',
-
-                    'content': '⚠️ DAON 서버 연결 불가 (127.0.0.1:9090 확인 필요)',
-
-                    'metadata': {'type': 'error'},
-
-                }, service=True)
+                _post_error_message(conv_id, user_id, '⚠️ DAON 서버 연결 불가 (127.0.0.1:9090 확인 필요)', msg.get('id'))
 
                 return
 
@@ -1186,19 +1311,7 @@ def handle_user_message(msg):
 
     if not start:
 
-        queue_sb_request('POST', '/rest/v1/messages', {
-
-            'conversation_id': conv_id,
-
-            'user_id': user_id,
-
-            'role': 'assistant',
-
-            'content': '⚠️ DAON 작업 시작 실패 (서버 실행 상태 확인 필요)',
-
-            'metadata': {'type': 'error'},
-
-        }, service=True)
+        _post_error_message(conv_id, user_id, '⚠️ DAON 작업 시작 실패 (서버 실행 상태 확인 필요)', msg.get('id'))
 
         return
 
@@ -1410,27 +1523,100 @@ def handle_user_message(msg):
 
 # ── Supabase Realtime 웹소켓 루프 (무중단 하트비트) ─────────
 
+_ERR_RETRY_MAX = 6
+
+_ERR_RETRY_COOLDOWN = 20.0
+
+_ERR_RETRY_STATE = {}
+
+_ERR_RETRY_LOCK = threading.Lock()
+
+
 def check_pending_user_messages():
-    """커넥터 시작 시 또는 재연결 시 최근 미처리된 유저 메시지를 자동 감지하여 실행합니다."""
+
+    '''커넥터 시작 시 또는 재연결 시 최근 미처리된 유저 메시지를 자동 감지하여 실행합니다.
+
+    [FIX 2026-09-14] 로그온 순서 가드 — 오류 안내(type=error)를 실제 답변으로 오인해 자동 재시도가
+    영구 차단되던 버그를 고친다. 재시도 폭주 방지용 쿨다운/최대 횟수 가드 포함.'''
+
     try:
+
         status, msgs = sb_request('GET', '/rest/v1/messages?role=eq.user&order=created_at.desc&limit=5', service=True)
+
         if not isinstance(msgs, list) or not msgs:
+
             return
+
         for m in reversed(msgs):
+
             mid = m.get('id')
+
             cid = m.get('conversation_id')
+
             cts = m.get('created_at')
+
             if not mid or not cid:
+
                 continue
+
             with _PROC_LOCK:
+
                 if mid in _PROC_MSGS:
+
                     continue
+
             q_cts = urllib.parse.quote(cts) if cts else ''
-            _, replies = sb_request('GET', f'/rest/v1/messages?conversation_id=eq.{cid}&role=eq.assistant&created_at=gt.{q_cts}&limit=1', service=True)
-            if isinstance(replies, list) and len(replies) == 0:
+
+            _, replies = sb_request('GET', '/rest/v1/messages?conversation_id=eq.' + cid + '&role=eq.assistant&created_at=gt.' + q_cts + '&order=created_at.asc&limit=10', service=True)
+
+            if not isinstance(replies, list):
+
+                continue
+
+            real = [r for r in replies if (r.get('metadata') or {}).get('type') != 'error']
+
+            if real:
+
+                continue
+
+            if replies:
+
+                with _ERR_RETRY_LOCK:
+
+                    st = _ERR_RETRY_STATE.setdefault(mid, {'count': 0, 'last': 0.0})
+
+                    now = time.time()
+
+                    if st['count'] >= _ERR_RETRY_MAX:
+
+                        continue
+
+                    if now - st['last'] < _ERR_RETRY_COOLDOWN:
+
+                        continue
+
+                    st['count'] += 1
+
+                    st['last'] = now
+
+                    nth = st['count']
+
+                    if len(_ERR_RETRY_STATE) > 500:
+
+                        for _k in list(_ERR_RETRY_STATE.keys())[:250]:
+
+                            _ERR_RETRY_STATE.pop(_k, None)
+
+                log.info('🚀 [오류 자동 재시도 %d/%d] conv=%s: %s', nth, _ERR_RETRY_MAX, cid[:8], (m.get('content') or '')[:50])
+
+            else:
+
                 log.info('🚀 [미처리 유저 메시지 감지] conv=%s: %s (자동 처리 시작)', cid[:8], (m.get('content') or '')[:50])
-                threading.Thread(target=handle_user_message, args=(m,), daemon=True).start()
+
+            threading.Thread(target=handle_user_message, args=(m,), daemon=True).start()
+
     except Exception as e:
+
         log.warning('미처리 메시지 확인 예외: %s', e)
 
 def realtime_ws_url():
