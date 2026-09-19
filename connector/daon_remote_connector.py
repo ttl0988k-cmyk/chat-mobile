@@ -1213,6 +1213,16 @@ def handle_user_message(msg):
 
         if session_id:
 
+            # [2026-09-19] 브라우저 에이전트 계약과 동일하게 is_dangerous 를 인지한다.
+            #   위험 명령(dangerous_command)이든 일반 도구 승인이든 DAON 서버의
+            #   /api/approval/respond 가 resolve_gateway_approval 로 일괄 처리하므로
+            #   라우팅은 동일하되, 로그/추적을 위해 is_dangerous 를 함께 남긴다.
+            _is_dangerous = bool(meta.get('is_dangerous'))
+
+            log.info('✅ 승인 응답 수신: session=%s approved=%s dangerous=%s',
+
+                     session_id[:8], bool(meta.get('approved')), _is_dangerous)
+
             daon_approval(session_id, bool(meta.get('approved')), reason=meta.get('reason', ''))
 
         return

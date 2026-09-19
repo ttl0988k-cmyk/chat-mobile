@@ -1,6 +1,6 @@
 // app.chat.js - send/approval/interrupt
 (function (APP) {
-'use strict';
+  'use strict';
 
   APP.sendMessage = async function sendMessage(text, attachments) {
     // [FIX 2026-09-12] 대화가 아직 없으면 먼저 확보한다.
@@ -21,7 +21,7 @@
     APP.sendMessage._inFlight = true;
 
     // 더브탭/Enter+버튼 대응: 동일 내용이 2초 이내 다시 대일 제대
-    const dedupKey = (text||'') + '|' + JSON.stringify(attachments||[]);
+    const dedupKey = (text || '') + '|' + JSON.stringify(attachments || []);
     const now = Date.now();
     if (APP.sendMessage._lastDedup && APP.sendMessage._lastDedup.key === dedupKey && (now - APP.sendMessage._lastDedup.ts) < 2000) {
       console.warn('[APP.sendMessage] 동일 메세지 중복 (ׅ) ❌');
@@ -40,9 +40,9 @@
 
       if (attachments && attachments.length) {
 
-      meta.attachments = attachments;
+        meta.attachments = attachments;
 
-      meta.type = 'file';
+        meta.type = 'file';
 
       }
 
@@ -52,15 +52,15 @@
 
       const { error } = await APP.sb.from('messages').insert({
 
-      conversation_id: APP.currentConversationId,
+        conversation_id: APP.currentConversationId,
 
-      user_id: APP.currentUserId,
+        user_id: APP.currentUserId,
 
-      role: 'user',
+        role: 'user',
 
-      content: content,
+        content: content,
 
-      metadata: meta,
+        metadata: meta,
 
       });
 
@@ -73,7 +73,7 @@
         APP.sb.from('conversations')
           .update({ updated_at: new Date().toISOString(), title: content.slice(0, 40) })
           .eq('id', APP.currentConversationId)
-          .then(() => {});
+          .then(() => { });
       }
 
     } finally {
@@ -81,7 +81,7 @@
     }
   };
   APP.onAttachClick = function onAttachClick() { APP.$('file-input').click(); }
-;
+    ;
   APP.onFileSelect = function onFileSelect(e) {
 
     const files = Array.from(e.target.files || []);
@@ -189,7 +189,7 @@
 
           .then(({ data }) => { if (data) img.src = data.signedUrl; })
 
-          .catch(() => {});
+          .catch(() => { });
 
       } else {
 
@@ -207,14 +207,18 @@
 
           .then(({ data }) => { if (data) link.href = data.signedUrl; })
 
-          .catch(() => {});
+          .catch(() => { });
 
       }
 
     }
 
   };
-  APP.sendApproval = async function sendApproval(approved, sessionId, reason) {
+  // [2026-09-19] 브라우저 에이전트(sidepanel.js) 승인 계약과 동일하게 isDangerous 를 전달한다.
+  //   - isDangerous=true  → 위험 명령 실행 승인 (커넥터가 /api/approval/respond 로 라우팅)
+  //   - isDangerous=false → 일반 도구 실행 승인
+  //   커넥터(daon_remote_connector.py)는 metadata.is_dangerous 를 읽어 분기한다.
+  APP.sendApproval = async function sendApproval(approved, sessionId, reason, isDangerous) {
 
     if (!APP.currentConversationId) return;
 
@@ -228,7 +232,13 @@
 
       content: approved ? '✅ 승인함' : '❌ 거절함',
 
-      metadata: { type: 'approval_response', approved: approved, session_id: sessionId, reason: reason || '' },
+      metadata: {
+        type: 'approval_response',
+        approved: approved,
+        session_id: sessionId,
+        reason: reason || '',
+        is_dangerous: !!isDangerous,
+      },
 
     });
 

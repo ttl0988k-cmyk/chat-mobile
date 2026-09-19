@@ -1,6 +1,6 @@
 // app.render.js - rendering + stream rows
 (function (APP) {
-'use strict';
+  'use strict';
 
   APP.escHtml = function escHtml(s) {
 
@@ -102,6 +102,139 @@
     return el;
 
   };
+
+  // ══════════════════════════════════════════════════════════════
+  // [2026-09-19] 승인 카드 렌더 — 브라우저 에이전트와 동일한 계약
+  // ──────────────────────────────────────────────────────────────
+  //  · DOM 구조/클래스명: sidepanel.js renderApprovalCard 와 100% 동일
+  //    (.inline-approval-card / .approval-header / .approval-icon /
+  //     .approval-title / .approval-body / .approval-command /
+  //     .approval-actions / .btn-approval.approve|reject)
+  //  · 자동승인(auto_approved): 기존 카드를 resolved 로 갱신 후 5초 뒤 제거
+  //  · 중복 렌더 가드: "실제로 보이는" 카드가 있을 때만 스킵 (BTN-2 원칙)
+  //    → 숨겨졌거나 분리된 카드 때문에 영구 미표시가 되는 문제 방지
+  //  · 승인/거절 결과는 messages 테이블에 approval_response row INSERT
+  //    (커넥터가 폴링 → 9090 /api/approval/respond 로 릴레이)
+  // ══════════════════════════════════════════════════════════════
+  APP.renderApprovalCard = function renderApprovalCard(row, d, thisSessionId) {
+    d = d || {};
+    const existingCard = document.getElementById('daonInlineApprovalCard');
+
+    // ── 45초 무응답 자동 승인 → 카드 갱신 후 5초 뒤 제거 ──
+    if (d.status === 'auto_approved') {
+      if (existingCard) {
+        existingCard.className = 'inline-approval-card resolved';
+        existingCard.innerHTML =
+          '<div class="approval-header">' +
+          '<span class="approval-icon">✅</span>' +
+          '<span class="approval-title">자동 승인됨</span>' +
+          '</div>' +
+          '<div class="approval-body" style="color:#34d399;">' +
+          APP.escHtml(row.content || d.message || '45초 무응답으로 자동 승인되어 작업을 계속 진행합니다.') +
+          '</div>';
+        setTimeout(() => { if (existingCard.isConnected) existingCard.remove(); }, 5000);
+      }
+      return;
+    }
+
+    // ── 이미 처리된 요청(만료 등) → 읽기 전용 안내 (버튼 없음) ──
+    if (d.status && d.status !== 'pending') {
+      if (!existingCard) {
+        const info = document.createElement('div');
+        info.className = 'inline-approval-card resolved';
+        info.innerHTML =
+          '<div class="approval-header">' +
+          '<span class="approval-icon">ℹ️</span>' +
+          '<span class="approval-title">처리된 승인</span>' +
+          '</div>' +
+          '<div class="approval-body">' + APP.escHtml(row.content || '') + '</div>';
+        APP.$('messages').appendChild(info);
+      }
+      return;
+    }
+
+    // ── 중복 렌더 방지: "실제로 보이는" 카드가 있을 때만 스킵 ──
+    if (existingCard && existingCard.isConnected && existingCard.offsetParent !== null) return;
+
+    const isDangerous = d.type === 'dangerous_command' || !!d.command;
+    const cmd = d.command || '';
+    const desc = d.description || d.message || (isDangerous ? '명령 실행을 허용할까요?' : '작업 실행 승인이 필요합니다.');
+
+    const card = document.createElement('div');
+    card.className = 'inline-approval-card';
+    card.id = 'daonInlineApprovalCard';
+    if (row && row.id) card.dataset.msgId = String(row.id);
+
+    let bodyHtml = '<div class="approval-body">' + APP.escHtml(desc) + '</div>';
+    if (cmd) {
+      bodyHtml += '<pre class="approval-command"><code>' + APP.escHtml(cmd) + '</code></pre>';
+    }
+
+    card.innerHTML =
+      '<div class="approval-header">' +
+      '<span class="approval-icon">⚠️</span>' +
+      '<span class="approval-title">도구 실행 승인 요청</span>' +
+      '</div>' +
+      bodyHtml +
+      '<div class="approval-actions">' +
+      '<button class="btn-approval approve" id="btnApproveAction"><span>승인 (계속 진행)</span></button>' +
+      '<button class="btn-approval reject" id="btnRejectAction"><span>거부</span></button>' +
+      '</div>';
+
+    const btnApprove = card.querySelector('#btnApproveAction');
+    const btnReject = card.querySelector('#btnRejectAction');
+
+    btnApprove.addEventListener('click', async () => {
+      btnApprove.disabled = true;
+      btnReject.disabled = true;
+      btnApprove.textContent = '승인 처리 중...';
+      try {
+        await APP.sendApproval(true, thisSessionId, '', isDangerous);
+        card.className = 'inline-approval-card resolved';
+        card.innerHTML =
+          '<div class="approval-header">' +
+          '<span class="approval-icon">✅</span>' +
+          '<span class="approval-title">승인 완료</span>' +
+          '</div>' +
+          '<div class="approval-body" style="color:#34d399;">' +
+          '승인이 완료되었습니다. 에이전트가 다음 작업을 계속 진행합니다.' +
+          '</div>';
+        setTimeout(() => { if (card.isConnected) card.remove(); }, 6000);
+      } catch (err) {
+        console.error('승인 처리 실패:', err);
+        btnApprove.disabled = false;
+        btnReject.disabled = false;
+        btnApprove.textContent = '다시 승인 시도';
+      }
+    });
+
+    btnReject.addEventListener('click', async () => {
+      btnApprove.disabled = true;
+      btnReject.disabled = true;
+      btnReject.textContent = '거부 처리 중...';
+      try {
+        await APP.sendApproval(false, thisSessionId, '', isDangerous);
+        card.className = 'inline-approval-card rejected';
+        card.innerHTML =
+          '<div class="approval-header">' +
+          '<span class="approval-icon">❌</span>' +
+          '<span class="approval-title">작업 거부됨</span>' +
+          '</div>' +
+          '<div class="approval-body" style="color:#f87171;">' +
+          '도구 실행을 거부했습니다. 에이전트가 이를 인지하고 대안을 찾습니다.' +
+          '</div>';
+        setTimeout(() => { if (card.isConnected) card.remove(); }, 4000);
+      } catch (err) {
+        console.error('거부 처리 실패:', err);
+        btnApprove.disabled = false;
+        btnReject.disabled = false;
+        btnReject.textContent = '다시 거부 시도';
+      }
+    });
+
+    APP.$('messages').appendChild(card);
+  };
+
   APP.renderMessage = function renderMessage(row) {
     // 현재 대화 소속 메시지만 렌더링 (다른 대화의 realtime INSERT 유입 차단)
     if (row.conversation_id && row.conversation_id !== APP.currentConversationId) return;
@@ -110,6 +243,9 @@
     const mtype = meta.type || '';
 
     // [v3] 승인 요청 (mtype === 'approval') → 최우선 처리 (role=tool이어도 차단 금지)
+    // [2026-09-19] 렌더링을 브라우저 에이전트(sidepanel.js renderApprovalCard)와
+    //   동일한 DOM 구조(.inline-approval-card 계열)로 통일한다.
+    //   → 데스크탑 챗창 / 브라우저 에이전트 / 모바일이 같은 CSS를 공유한다.
     if (mtype === 'approval') {
       APP.setWorkingState(true);
       APP.pendingAssistantEl = null;
@@ -118,41 +254,7 @@
       const thisSessionId = d.session_id || APP.activeSessionId;
       APP.activeSessionId = thisSessionId;
 
-      if (d.status && d.status !== 'pending') {
-        // 자동 승인/만료 등 이미 처리된 요청 → 읽기 전용 안내 (버튼 없음)
-        APP.createBubble('tool', row.content, true, row.id);
-        APP.scrollBottom();
-        return;
-      }
-
-      let el = row.id ? document.querySelector(`.msg-row[data-msg-id="${row.id}"]`) : null;
-      if (!el) {
-        el = APP.createBubble('tool', row.content, true, row.id);
-        const btnWrap = document.createElement('div');
-        btnWrap.className = 'approval-btns';
-
-        const ok = document.createElement('button');
-        ok.className = 'approve';
-        ok.textContent = '✅ 승인';
-        ok.onclick = () => {
-          APP.sendApproval(true, thisSessionId);
-          ok.disabled = true;
-          no.disabled = true;
-        };
-
-        const no = document.createElement('button');
-        no.className = 'reject';
-        no.textContent = '❌ 거절';
-        no.onclick = () => {
-          APP.sendApproval(false, thisSessionId);
-          ok.disabled = true;
-          no.disabled = true;
-        };
-
-        btnWrap.appendChild(ok);
-        btnWrap.appendChild(no);
-        el.appendChild(btnWrap);
-      }
+      APP.renderApprovalCard(row, d, thisSessionId);
       APP.scrollBottom();
       return;
     }
@@ -253,14 +355,11 @@
     const mtype = meta.type || '';
 
     if (mtype === 'approval') {
-      const existing = document.querySelector(`.msg-row[data-msg-id="${row.id}"]`);
-      if (existing) {
-        const d = meta.data || {};
-        if (d.status && d.status !== 'pending') {
-          const btns = existing.querySelector('.approval-btns');
-          if (btns) btns.remove();
-        }
-      }
+      // [2026-09-19] 브라우저 에이전트(sidepanel.js)와 동일한 카드 구조로 갱신.
+      //   자동승인(auto_approved)이면 카드를 resolved 로 바꾸고 5초 뒤 제거한다.
+      const d = meta.data || {};
+      const thisSessionId = d.session_id || APP.activeSessionId;
+      APP.renderApprovalCard(row, d, thisSessionId);
       return;
     }
 
@@ -418,7 +517,7 @@
 
     if (APP.messagesChannel) {
 
-      try { APP.sb.removeChannel(APP.messagesChannel); } catch (_) {}
+      try { APP.sb.removeChannel(APP.messagesChannel); } catch (_) { }
 
       APP.messagesChannel = null;
 
